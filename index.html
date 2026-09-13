@@ -1,0 +1,3209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kennel Board — Health &amp; Training Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EFEDE2;
+    --surface:#FBFAF4;
+    --surface-2:#FFFFFF;
+    --ink:#26241C;
+    --ink-soft:#5C5947;
+    --spruce:#22392D;
+    --spruce-dark:#152720;
+    --spruce-tint:#DCE6DE;
+    --brass:#A9793C;
+    --brass-light:#E4C593;
+    --rust:#A3402B;
+    --rust-tint:#F3DCD5;
+    --amber:#BD8A2E;
+    --amber-tint:#F3E6C6;
+    --sage:#8B9C85;
+    --line:#DBD5C2;
+    --radius:12px;
+    --radius-sm:8px;
+    --shadow:0 2px 10px rgba(21,39,32,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{ font-family:'Roboto Slab', serif; margin:0; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  button, input, select, textarea{ font-family:inherit; font-size:15px; }
+  a{ color:inherit; }
+
+  .app-shell{ display:flex; min-height:100vh; }
+  #app{ flex:1; min-width:0; max-width:560px; margin:0 auto; padding:0 16px 90px; min-height:100vh; position:relative; }
+  @media (min-width:700px){
+    #app{ max-width:640px; padding-left:24px; padding-right:24px; }
+    #app.app-wide{ max-width:860px; }
+  }
+  @media (min-width:1024px){
+    #app{ max-width:700px; }
+    #app.app-wide{ max-width:1120px; }
+  }
+
+  /* ---- Sidebar ---- */
+  .sidebar{
+    width:230px; flex-shrink:0; background:var(--spruce-dark); color:#F3F0E4;
+    display:flex; flex-direction:column; padding:18px 14px;
+    position:fixed; top:0; left:-260px; bottom:0; z-index:40;
+    transition:left 0.22s ease; overflow-y:auto;
+  }
+  .sidebar.open{ left:0; box-shadow:6px 0 24px rgba(0,0,0,0.25); }
+  .sidebar-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(21,39,32,0.45); z-index:35;
+  }
+  .sidebar-backdrop.open{ display:block; }
+  .sidebar-head{ display:flex; align-items:center; gap:10px; padding:6px 8px 18px; }
+  .sidebar-head h1{ font-size:16.5px; color:#fff; }
+  .sidebar-head p{ margin:1px 0 0; font-size:11px; color:#B9C2BB; }
+  .sidebar-nav{ display:flex; flex-direction:column; gap:2px; flex:1; }
+  .sidebar-link{
+    display:flex; align-items:center; gap:11px;
+    background:none; border:none; color:#D8DED9; text-align:left;
+    padding:10px 10px; border-radius:8px; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .sidebar-link svg{ flex-shrink:0; opacity:0.85; }
+  .sidebar-link:hover{ background:rgba(255,255,255,0.06); }
+  .sidebar-link.active{ background:var(--brass); color:#fff; }
+  .sidebar-link.active svg{ opacity:1; }
+  .sidebar-foot{ display:flex; flex-direction:column; gap:2px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.12); margin-top:8px; }
+  .hamburger-btn{
+    display:none; background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+    width:34px; height:34px; align-items:center; justify-content:center; cursor:pointer; color:var(--spruce-dark);
+    flex-shrink:0;
+  }
+  @media (max-width:1023px){
+    .hamburger-btn{ display:flex; }
+  }
+  @media (min-width:1024px){
+    .sidebar{ position:sticky; left:0; top:0; height:100vh; }
+    .sidebar-backdrop{ display:none !important; }
+  }
+
+  /* ---- Header ---- */
+  .topbar{
+    display:flex; align-items:center; gap:10px;
+    padding:20px 0 14px;
+    position:sticky; top:0; background:var(--bg); z-index:5;
+  }
+  .topbar .tag-icon{
+    width:34px; height:34px; border-radius:8px;
+    background:var(--spruce); color:var(--brass-light);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .tag-icon.has-logo{ background:transparent; box-shadow:none; }
+  .tag-icon img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .topbar .titles h1{ font-size:19px; color:var(--spruce-dark); letter-spacing:0.01em; }
+  .topbar .titles p{ margin:1px 0 0; font-size:12px; color:var(--ink-soft); }
+  .topbar.with-back{ cursor:default; }
+  .back-btn{
+    display:inline-flex; align-items:center; gap:5px;
+    background:none; border:none; color:var(--spruce);
+    font-weight:600; font-size:14px; padding:6px 0; cursor:pointer;
+  }
+  .icon-btn{
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:8px; width:34px; height:34px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--ink-soft);
+  }
+  .icon-btn:hover{ border-color:var(--brass); color:var(--brass); }
+  .icon-btn.danger:hover{ border-color:var(--rust); color:var(--rust); }
+
+  /* ---- Board (alerts) ---- */
+  .board{
+    background:var(--spruce);
+    border-radius:var(--radius);
+    padding:16px 16px 14px;
+    margin-bottom:22px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .board::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size:5px 5px;
+    pointer-events:none;
+  }
+  .board-head{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+  .board-pin{ width:8px; height:8px; border-radius:50%; background:var(--brass-light); box-shadow:0 0 0 3px rgba(228,197,147,0.18); }
+  .board-head h2{ color:#F3F0E4; font-size:14px; letter-spacing:0.06em; text-transform:uppercase; font-weight:600; font-family:'IBM Plex Sans',sans-serif; }
+  .board-empty{ color:#CBD6CD; font-size:13.5px; padding:6px 2px 4px; position:relative; }
+  .board-list{ display:flex; flex-direction:column; gap:8px; position:relative; }
+  .board-item{
+    background:var(--surface-2);
+    border-radius:6px;
+    padding:9px 12px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border-left:4px solid var(--amber);
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  }
+  .board-item.overdue{ border-left-color:var(--rust); }
+  .board-item .bi-left{ min-width:0; }
+  .board-item .bi-name{ font-weight:600; font-size:13.5px; color:var(--ink); }
+  .board-item .bi-type{ font-size:12px; color:var(--ink-soft); }
+  .board-item .bi-due{
+    font-size:11.5px; font-weight:600; white-space:nowrap;
+    padding:3px 8px; border-radius:20px;
+    background:var(--amber-tint); color:#7A5A1E;
+  }
+  .board-item.overdue .bi-due{ background:var(--rust-tint); color:var(--rust); }
+
+  /* ---- Roster ---- */
+  .roster-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .roster-header h2{ font-size:17px; color:var(--spruce-dark); }
+  .roster-header .count{ color:var(--ink-soft); font-weight:400; font-size:14px; }
+  #search-input{
+    flex:1; min-width:160px;
+    padding:8px 12px; border:1px solid var(--line); border-radius:20px;
+    background:var(--surface-2); color:var(--ink);
+  }
+  #search-input:focus{ outline:none; border-color:var(--brass); }
+
+  .empty-state{
+    text-align:center; padding:36px 16px; color:var(--ink-soft);
+    background:var(--surface); border:1px dashed var(--line); border-radius:var(--radius);
+    font-size:14px; line-height:1.5;
+  }
+  .report-section{ margin-bottom:18px; }
+  .report-section-title{ font-size:14px; color:var(--spruce-dark); margin:0 0 8px; }
+  .report-table{ background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; }
+  .report-row{ display:flex; align-items:center; gap:12px; padding:9px 12px; border-bottom:1px solid var(--line); }
+  .report-row:last-child{ border-bottom:none; }
+  .report-row .rt-date{ width:76px; flex-shrink:0; font-size:12px; color:var(--ink-soft); }
+  .report-row .rt-main{ flex:1; min-width:0; }
+  .report-row .rt-title{ font-size:13.5px; font-weight:600; color:var(--ink); }
+  .report-row .rt-sub{ font-size:12px; color:var(--ink-soft); margin-top:1px; }
+  .report-row .rt-badge{ flex-shrink:0; }
+  .print-header{ display:none; }
+  @media (min-width:700px){
+    #roster-list, #food-list, #medicine-list, #report-list{
+      display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; align-items:start;
+    }
+    #roster-list .dog-card, #food-list .food-card, #medicine-list .food-card, #report-list .dog-card{ margin-bottom:0; }
+    #report-list{ align-items:stretch; }
+    #report-list .dog-card{ height:100%; align-items:flex-start; }
+  }
+  @media (min-width:1024px){
+    #roster-list, #report-list{ grid-template-columns:repeat(3, 1fr); }
+    #food-list, #medicine-list{ grid-template-columns:repeat(2, 1fr); }
+  }
+
+  .dog-card{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:13px 14px;
+    margin-bottom:10px;
+    display:flex; align-items:center; gap:12px;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .dog-card:active{ transform:scale(0.995); }
+  #report-list .dog-card{ min-height:80px; align-items:flex-start; }
+  .status-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--sage); }
+  .status-dot.ok{ background:#4C7A5C; }
+  .status-dot.due-soon{ background:var(--amber); }
+  .status-dot.overdue{ background:var(--rust); }
+  .status-dot.none{ background:var(--line); }
+  .avatar-wrap{ position:relative; width:38px; height:38px; flex-shrink:0; }
+  .report-icon{
+    width:38px; height:38px; border-radius:10px; flex-shrink:0;
+    background:var(--spruce-tint); color:var(--spruce-dark);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .avatar-wrap .status-dot{ position:absolute; bottom:-1px; right:-1px; border:2px solid var(--surface-2); width:11px; height:11px; }
+  .avatar{
+    width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0;
+    background:var(--spruce-tint); color:var(--spruce-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Roboto Slab', serif; font-weight:600; font-size:15px;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-lg{ width:56px; height:56px; font-size:22px; }
+  .photo-picker{ display:flex; align-items:center; gap:12px; }
+  .photo-preview{
+    width:64px; height:64px; border-radius:50%; overflow:hidden; flex-shrink:0;
+    background:var(--spruce-tint); color:var(--spruce-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Roboto Slab', serif; font-weight:600; font-size:24px;
+  }
+  .photo-preview img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .logo-checker{
+    background-color:#fff;
+    background-image:
+      linear-gradient(45deg, #d8d3c4 25%, transparent 25%),
+      linear-gradient(-45deg, #d8d3c4 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #d8d3c4 75%),
+      linear-gradient(-45deg, transparent 75%, #d8d3c4 75%);
+    background-size:12px 12px;
+    background-position:0 0, 0 6px, 6px -6px, -6px 0px;
+  }
+  .photo-actions{ display:flex; flex-direction:column; gap:6px; }
+  .photo-actions .btn{ padding:7px 12px; font-size:12.5px; }
+  .dog-card .dc-main{ flex:1; min-width:0; }
+  .dog-card .eyebrow{ font-size:10.5px; color:var(--brass); letter-spacing:0.08em; font-weight:500; }
+  .dog-card .name{ font-size:16.5px; font-weight:600; color:var(--ink); }
+  .dog-card .sub{ font-size:12.5px; color:var(--ink-soft); margin-top:1px; }
+  .badge{
+    display:inline-block; font-size:11px; font-weight:600; padding:3px 9px;
+    border-radius:20px; background:var(--spruce-tint); color:var(--spruce-dark);
+    white-space:nowrap;
+  }
+  .badge.role-breeder{ background:var(--brass-light); color:#5C3F17; }
+  .badge.role-trained{ background:var(--spruce-tint); color:var(--spruce-dark); }
+  .badge.role-security{ background:#DCE3EE; color:#2C4468; }
+  .badge.role-under_training{ background:var(--amber-tint); color:#7A5A1E; }
+  .badge.role-posted_out{ background:#E8E4D5; color:var(--ink-soft); }
+  .badge.role-retired{ background:var(--line); color:var(--ink-soft); }
+
+  .fab{
+    position:fixed; bottom:24px; right:20px;
+    width:54px; height:54px; border-radius:50%; border:none;
+    background:var(--brass); color:#fff; font-size:26px; line-height:1;
+    box-shadow:0 4px 14px rgba(169,121,60,0.45);
+    cursor:pointer; z-index:10;
+  }
+
+  /* ---- Dog detail ---- */
+  .detail-head-v2{ display:flex; align-items:flex-start; gap:16px; margin-bottom:4px; }
+  .avatar-xl{ width:100px; height:100px; font-size:34px; flex-shrink:0; }
+  .detail-head-info{ flex:1; min-width:0; display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding-top:4px; }
+  .detail-title h1{ font-size:21px; color:var(--spruce-dark); }
+  .detail-title .sub{ font-size:13px; color:var(--ink-soft); margin-top:2px; }
+  .detail-actions{ display:flex; gap:8px; flex-shrink:0; }
+
+  .tabs{ display:flex; gap:4px; margin:18px 0 14px; border-bottom:1px solid var(--line); overflow-x:auto; }
+  .tab-btn{
+    display:flex; align-items:center; gap:5px;
+    background:none; border:none; padding:9px 4px; margin-right:14px;
+    font-weight:600; font-size:13px; color:var(--ink-soft); flex-shrink:0; white-space:nowrap;
+    cursor:pointer; border-bottom:2px solid transparent; position:relative; top:1px;
+  }
+  .tab-btn svg{ opacity:0.7; }
+  .tab-btn.active{ color:var(--spruce-dark); border-bottom-color:var(--brass); }
+  .tab-btn.active svg{ opacity:1; }
+
+  .field-grid{ display:flex; flex-direction:column; gap:2px; }
+  .info-row{ display:flex; justify-content:space-between; padding:10px 2px; border-bottom:1px solid var(--line); font-size:14px; }
+  .info-row .k{ color:var(--ink-soft); }
+  .info-row .v{ font-weight:500; text-align:right; max-width:65%; }
+  .notes-block{ margin-top:10px; padding:12px; background:var(--surface); border-radius:var(--radius-sm); font-size:13.5px; color:var(--ink-soft); line-height:1.5; }
+
+  .section-actions{ display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px; }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 14px; border-radius:20px; border:1px solid var(--spruce);
+    background:var(--spruce); color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .btn.secondary{ background:var(--surface-2); color:var(--spruce); }
+  .btn.ghost{ background:none; color:var(--ink-soft); border-color:var(--line); }
+  .btn.full{ width:100%; justify-content:center; }
+
+  .log-entry{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:11px 13px; margin-bottom:9px;
+  }
+  .log-entry .le-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+  .le-date{ font-size:12px; color:var(--ink-soft); }
+  .le-type{ font-size:12.5px; font-weight:600; background:var(--line); color:var(--ink); padding:2px 9px; border-radius:20px; }
+  .le-notes{ font-size:13.5px; color:var(--ink); line-height:1.45; }
+  .le-due{ display:inline-block; margin-top:6px; font-size:11.5px; font-weight:600; padding:3px 8px; border-radius:20px; }
+  .le-due.ok{ background:var(--spruce-tint); color:var(--spruce-dark); }
+  .le-due.due-soon{ background:var(--amber-tint); color:#7A5A1E; }
+  .le-due.overdue{ background:var(--rust-tint); color:var(--rust); }
+  .le-due.none{ background:var(--line); color:var(--ink-soft); }
+  .le-level{ font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:20px; }
+  .le-level.introduced{ background:var(--spruce-tint); color:var(--spruce-dark); opacity:0.65; }
+  .le-level.in-progress{ background:var(--amber-tint); color:#7A5A1E; }
+  .le-level.mastered{ background:var(--spruce); color:#fff; }
+  .le-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; padding:2px; }
+  .le-del:hover{ color:var(--rust); }
+
+  /* ---- Forms ---- */
+  .form-card{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:16px; box-shadow:var(--shadow);
+  }
+  .form-card h3{ font-size:15px; color:var(--spruce-dark); margin-bottom:12px; }
+  .fld{ margin-bottom:12px; }
+  .fld label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
+  .fld input, .fld select, .fld textarea{
+    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:var(--radius-sm);
+    background:var(--surface); color:var(--ink);
+  }
+  .fld input:focus, .fld select:focus, .fld textarea:focus{ outline:none; border-color:var(--brass); }
+  .fld textarea{ resize:vertical; min-height:56px; }
+  .fld-row{ display:flex; gap:10px; }
+  .fld-row .fld{ flex:1; }
+  .form-actions{ display:flex; gap:10px; margin-top:14px; }
+  .form-actions .btn{ flex:1; }
+  .req{ color:var(--rust); }
+  .fld-hint{ font-size:11.5px; color:var(--ink-soft); margin-top:5px; line-height:1.4; }
+
+  /* ---- Home tabs ---- */
+  .home-tabs{ display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .hometab-btn{
+    flex:1; padding:8px 4px; border-radius:20px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink-soft); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .hometab-btn.active{ background:var(--spruce); color:#fff; border-color:var(--spruce); }
+
+  /* ---- Role & settings ---- */
+  .role-pill{
+    padding:6px 12px; border-radius:20px; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink-soft); font-weight:600; font-size:12px; cursor:pointer; white-space:nowrap;
+  }
+  .role-pill:hover{ border-color:var(--brass); color:var(--brass); }
+
+  /* ---- Food ---- */
+  .food-card{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius);
+    margin-bottom:10px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .food-card-head{ padding:13px 14px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+  .food-card-head .qty{ font-weight:600; font-size:15px; white-space:nowrap; }
+  .food-expanded{ padding:0 14px 14px; border-top:1px solid var(--line); }
+  .food-expanded .form-actions{ flex-wrap:wrap; }
+  .food-expanded .icon-btn{ flex:0 0 auto; }
+
+  .footnote{ text-align:center; font-size:11.5px; color:var(--ink-soft); opacity:0.8; margin-top:26px; }
+  .loading{ text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:14px; }
+  @media print{
+    body *{ visibility:hidden; }
+    #print-area, #print-area *{ visibility:visible; }
+    #print-area{ position:absolute; left:0; top:0; width:100%; margin:0; padding:0; }
+    .no-print, .sidebar, .fab, .hamburger-btn{ display:none !important; }
+    .print-header{ display:block !important; margin-bottom:16px; border-bottom:2px solid #000; padding-bottom:10px; }
+    .print-header h1{ font-size:20px; margin:0 0 2px; font-family:'Roboto Slab', serif; color:#000; }
+    .print-header h2{ font-size:14px; font-weight:600; margin:0 0 6px; color:#000; }
+    .print-meta{ font-size:11px; color:#333; }
+    .report-section{ break-inside:avoid; }
+    .report-section-title{ color:#000 !important; font-size:13px; border-bottom:1px solid #000; padding-bottom:3px; }
+    .report-table{ background:none !important; border:1px solid #000 !important; border-radius:0 !important; }
+    .report-row{ border-bottom:1px solid #ccc !important; break-inside:avoid; }
+    .rt-title, .rt-date, .rt-sub{ color:#000 !important; }
+    .le-due, .badge, .le-type, .le-level{ background:none !important; border:1px solid #000 !important; color:#000 !important; padding:1px 6px !important; border-radius:0 !important; box-shadow:none !important; }
+    .empty-state{ background:none !important; border:1px dashed #999 !important; color:#333 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <nav class="sidebar" id="sidebar"></nav>
+  <div id="app"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBoLQpgFXnhlao4tyXOY7i7rS7Fz-TQVfQ",
+    authDomain: "kennel-board.firebaseapp.com",
+    projectId: "kennel-board",
+    storageBucket: "kennel-board.firebasestorage.app",
+    messagingSenderId: "272974073065",
+    appId: "1:272974073065:web:72eefc82796a6ed2a7f478"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  window.fbAuth = getAuth(fbApp);
+  window.fbDb = getFirestore(fbApp);
+  window.fbSignIn = (email, password) => signInWithEmailAndPassword(window.fbAuth, email, password);
+  window.fbSignOut = () => signOut(window.fbAuth);
+  window.fbDoc = (key) => doc(window.fbDb, "kennelData", key);
+  window.fbGetDoc = getDoc;
+  window.fbSetDoc = setDoc;
+  window.fbReady = true;
+
+  onAuthStateChanged(window.fbAuth, (user) => {
+    if(typeof window.onFirebaseAuthChange === 'function'){
+      window.onFirebaseAuthChange(user ? { uid: user.uid, email: user.email } : null);
+    }
+  });
+</script>
+
+<script>
+/* ---------------- State ---------------- */
+const state = {
+  loading:true,
+  sidebarOpen:false,
+  authUser:null,
+  authChecked:false,
+  authError:null,
+  storageMode:null, // null (unknown yet) | 'firestore' | 'claude' | 'local' | 'memory'
+  role:null, // null (must choose) | 'admin' | 'data_entry' | 'viewer'
+  pendingRole:null,
+  pinError:null,
+  settings:{ pins:{admin:null, data_entry:null, viewer:null} },
+  view:'dashboard', // dashboard | dogDetail | dogForm | foodInventory | foodForm | medicineInventory | medicineForm | reports | reportView | settings
+  dogs:[],
+  healthLogs:[],
+  trainingLogs:[],
+  foodItems:[],
+  feedingLogs:[],
+  medicineItems:[],
+  medicationLogs:[],
+  handlers:[],
+  editingHandlerId:null,
+  handlerFormPhoto:null,
+  selectedDogId:null,
+  editingDogId:null,
+  dogFormPhoto:null,
+  editingFoodId:null,
+  expandedFoodId:null,
+  showRestockFormFor:null,
+  editingMedicineId:null,
+  expandedMedicineId:null,
+  showMedRestockFormFor:null,
+  showMedicationForm:false,
+  reportType:null,
+  reportFrame:'this-week',
+  reportStart:null,
+  reportEnd:null,
+  reportFilterDog:'',
+  reportFilterHandler:'',
+  reportFilterType:'',
+  reportFilterDog:'',
+  reportFilterHandler:'',
+  reportFilterType:'',
+  detailTab:'profile',
+  showHealthForm:false,
+  showTrainingForm:false,
+  showFeedingForm:false,
+  showQuickRationForm:false,
+  search:''
+};
+
+const HEALTH_TYPES = ['Vaccination','Vet Visit','Deworming / Parasite Prevention','Weight Check','Medication','Illness / Injury','Grooming','Heat Cycle','Bred','Pregnancy Check','Whelped','Other'];
+const TRAINING_LEVELS = ['Introduced','In Progress','Mastered'];
+const FOOD_TYPES = ['Kibble / Dry Food','Raw Diet','Wet / Canned','Treats','Supplements','Other'];
+const FOOD_UNITS = ['kg','lb','bags','cans','units'];
+const DOG_BREEDS = ['Affenpinscher','Afghan Hound','Airedale Terrier','Akita','Alaskan Malamute','American Bulldog','American Staffordshire Terrier','Anatolian Shepherd','Australian Cattle Dog','Australian Shepherd','Basenji','Basset Hound','Beagle','Belgian Malinois','Bernese Mountain Dog','Bichon Frise','Bloodhound','Border Collie','Border Terrier','Boston Terrier','Bouvier des Flandres','Boxer','Boykin Spaniel','Bull Terrier','Bulldog','Bullmastiff','Cane Corso','Cavalier King Charles Spaniel','Chesapeake Bay Retriever','Chihuahua','Chow Chow','Cocker Spaniel','Collie','Dachshund','Dalmatian','Doberman Pinscher','Dogo Argentino','Dogue de Bordeaux','English Setter','English Springer Spaniel','Field Spaniel','French Bulldog','German Pinscher','German Shepherd','German Shorthaired Pointer','Golden Retriever','Great Dane','Great Pyrenees','Greater Swiss Mountain Dog','Greyhound','Havanese','Ibizan Hound','Irish Setter','Irish Wolfhound','Jack Russell Terrier','Japanese Chin','Keeshond','Kuvasz','Labrador Retriever','Lhasa Apso','Maltese','Mastiff','Miniature Pinscher','Miniature Schnauzer','Newfoundland','Norwegian Elkhound','Old English Sheepdog','Papillon','Pekingese','Pembroke Welsh Corgi','Pit Bull Terrier','Pointer','Pomeranian','Poodle (Standard)','Poodle (Miniature)','Poodle (Toy)','Portuguese Water Dog','Pug','Rhodesian Ridgeback','Rottweiler','Saint Bernard','Saluki','Samoyed','Schnauzer (Giant)','Scottish Terrier','Shar Pei','Shetland Sheepdog','Shiba Inu','Shih Tzu','Siberian Husky','Staffordshire Bull Terrier','Standard Schnauzer','Tibetan Mastiff','Vizsla','Weimaraner','Welsh Terrier','West Highland White Terrier','Whippet','Yorkshire Terrier','Mixed Breed'];
+const MEDICINE_TYPES = ['Antibiotic','Vaccine','Dewormer','Pain Relief / Anti-inflammatory','Supplement','Flea / Tick Prevention','Sedative','Other'];
+const MEDICINE_UNITS = ['tablets','ml','mg','doses','vials','bottles','units'];
+const HEADING_FONTS = [
+  {v:'', l:'Default (Roboto Slab)'},
+  {v:"'Roboto Slab', serif", l:'Roboto Slab (serif)'},
+  {v:"'IBM Plex Sans', sans-serif", l:'IBM Plex Sans (sans-serif)'},
+  {v:"'IBM Plex Mono', monospace", l:'IBM Plex Mono (monospace)'},
+  {v:'Georgia, serif', l:'Georgia (serif)'},
+  {v:'Arial, Helvetica, sans-serif', l:'Arial (sans-serif)'},
+  {v:"'Times New Roman', Times, serif", l:'Times New Roman (serif)'},
+  {v:"'Courier New', Courier, monospace", l:'Courier New (monospace)'}
+];
+const HEADING_SIZES = [
+  {v:'0.85', l:'Small'},
+  {v:'1', l:'Medium (default)'},
+  {v:'1.2', l:'Large'},
+  {v:'1.4', l:'Extra large'}
+];
+function appHeadingText(){
+  return (state.settings.headingText || '').trim();
+}
+function customHeadingLine(baseSizePx, forceColor){
+  const custom = appHeadingText();
+  if(!custom) return '';
+  const smallSize = Math.max(10, Math.round(baseSizePx * 0.58));
+  return `<div style="${appHeadingStyle(smallSize, forceColor)} line-height:1.2; margin-bottom:1px;">${esc(custom)}</div>`;
+}
+function appHeadingStyle(baseSizePx, forceColor){
+  const font = state.settings.headingFont || '';
+  const color = forceColor || state.settings.headingColor || 'var(--spruce-dark)';
+  const scale = parseFloat(state.settings.headingScale) || 1;
+  let style = 'font-size:' + Math.round(baseSizePx * scale) + 'px; color:' + color + ';';
+  if(font) style += 'font-family:' + font + ';';
+  return style;
+}
+function logoBoxStyle(baseSizePx, field, extra){
+  const scale = parseFloat(state.settings[field]) || 100;
+  const size = Math.max(12, Math.round(baseSizePx * scale / 100));
+  return 'width:' + size + 'px; height:' + size + 'px;' + (extra||'');
+}
+const ROLES = [
+  {v:'breeder', l:'Breeder'},
+  {v:'trained', l:'Trained'},
+  {v:'security', l:'Security'},
+  {v:'under_training', l:'Under Training'},
+  {v:'posted_out', l:'Posted Out'},
+  {v:'retired', l:'Retired'}
+];
+function migrateRole(r){
+  if(ROLES.some(x=>x.v===r)) return r;
+  const legacyMap = { breeding:'breeder', training:'under_training', both:'breeder' };
+  return legacyMap[r] || 'under_training';
+}
+
+/* ---------------- Storage ---------------- */
+const LOCAL_PREFIX = 'kennelBoard:';
+const memoryStore = {};
+
+function localGet(key){
+  const v = localStorage.getItem(LOCAL_PREFIX+key);
+  return v!=null ? JSON.parse(v) : null;
+}
+function localSet(key, value){
+  localStorage.setItem(LOCAL_PREFIX+key, JSON.stringify(value));
+}
+function fallbackGet(key){
+  try{
+    localStorage.setItem('__kb_probe__','1'); localStorage.removeItem('__kb_probe__');
+    state.storageMode='local';
+    return localGet(key);
+  }catch(e2){
+    state.storageMode='memory';
+    return memoryStore[key] ?? null;
+  }
+}
+async function firestoreGet(key){
+  const snap = await window.fbGetDoc(window.fbDoc(key));
+  return snap.exists() ? snap.data().value : null;
+}
+async function firestoreSet(key, value){
+  await window.fbSetDoc(window.fbDoc(key), { value: value, updatedAt: new Date().toISOString() });
+}
+function firestoreAvailable(){
+  return !!(state.authUser && window.fbReady && window.fbDb);
+}
+
+async function safeGet(key){
+  if(state.storageMode==='firestore'){
+    try{ return await firestoreGet(key); }
+    catch(e){ console.error('Firestore read failed for', key, '— falling back.', e); return fallbackGet(key); }
+  }
+  if(state.storageMode==='local'){ try{ return localGet(key); }catch(e){ return null; } }
+  if(state.storageMode==='memory'){ return memoryStore[key] ?? null; }
+  if(firestoreAvailable()){
+    try{
+      const val = await firestoreGet(key);
+      state.storageMode = 'firestore';
+      return val;
+    }catch(e){
+      console.error('Firestore unavailable, falling back.', e);
+    }
+  }
+  try{
+    if(typeof window.storage==='undefined' || !window.storage || typeof window.storage.get!=='function') throw new Error('window.storage unavailable');
+    const r = await window.storage.get(key, false);
+    state.storageMode = 'claude';
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){
+    return fallbackGet(key);
+  }
+}
+const writeQueues = {};
+function safeSet(key, value){
+  const prev = writeQueues[key] || Promise.resolve();
+  const next = prev.then(() => doSafeSet(key, value)).catch(()=>{});
+  writeQueues[key] = next;
+  return next;
+}
+async function doSafeSet(key, value){
+  if(state.storageMode==='firestore'){
+    try{ await firestoreSet(key, value); }
+    catch(e){
+      console.error('Firestore write failed for', key, '— falling back.', e);
+      try{ localSet(key, value); state.storageMode='local'; }
+      catch(e2){ memoryStore[key]=value; state.storageMode='memory'; }
+    }
+    return;
+  }
+  if(state.storageMode==='local'){
+    try{ localSet(key, value); }catch(e){ state.storageMode='memory'; memoryStore[key]=value; }
+    return;
+  }
+  if(state.storageMode==='memory'){ memoryStore[key]=value; return; }
+  if(firestoreAvailable()){
+    try{
+      await firestoreSet(key, value);
+      state.storageMode = 'firestore';
+      return;
+    }catch(e){
+      console.error('Firestore unavailable, falling back.', e);
+    }
+  }
+  try{
+    if(typeof window.storage==='undefined' || !window.storage || typeof window.storage.set!=='function') throw new Error('window.storage unavailable');
+    const r = await window.storage.set(key, JSON.stringify(value), false);
+    if(!r) throw new Error('no result');
+    state.storageMode = 'claude';
+  }catch(e){
+    console.error('Claude storage failed for', key, '— falling back.', e);
+    try{
+      localSet(key, value);
+      state.storageMode='local';
+    }catch(e2){
+      memoryStore[key]=value;
+      state.storageMode='memory';
+    }
+  }
+}
+const saveDogs = () => safeSet('dogs', state.dogs);
+const saveHealthLogs = () => safeSet('health-logs', state.healthLogs);
+const saveTrainingLogs = () => safeSet('training-logs', state.trainingLogs);
+const saveFoodItems = () => safeSet('food-items', state.foodItems);
+const saveFeedingLogs = () => safeSet('feeding-logs', state.feedingLogs);
+const saveMedicineItems = () => safeSet('medicine-items', state.medicineItems);
+const saveMedicationLogs = () => safeSet('medication-logs', state.medicationLogs);
+const saveSettings = () => safeSet('app-settings', state.settings);
+const saveHandlers = () => safeSet('handlers', state.handlers);
+
+async function loadData(){
+  const [dogs, health, training, food, feeding, medicine, medication, settings, handlers] = await Promise.all([
+    safeGet('dogs'), safeGet('health-logs'), safeGet('training-logs'), safeGet('food-items'), safeGet('feeding-logs'),
+    safeGet('medicine-items'), safeGet('medication-logs'), safeGet('app-settings'), safeGet('handlers')
+  ]);
+  state.dogs = (dogs || []).map(d => ({...d, role: migrateRole(d.role)}));
+  state.healthLogs = health || [];
+  state.trainingLogs = training || [];
+  state.foodItems = food || [];
+  state.feedingLogs = feeding || [];
+  state.medicineItems = medicine || [];
+  state.medicationLogs = medication || [];
+  state.settings = settings || { pins:{admin:null, data_entry:null, viewer:null} };
+  if(!state.settings.pins){
+    state.settings.pins = { admin: state.settings.adminPin || null, data_entry: null, viewer: null };
+  }
+  state.handlers = handlers || [];
+  state.loading = false;
+  render();
+}
+
+/* ---------------- Helpers ---------------- */
+function uid(){ return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
+function esc(str){
+  return String(str==null?'':str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  if(isNaN(dt)) return d;
+  return dt.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+}
+function daysUntil(d){
+  const today = new Date(todayISO()+'T00:00:00');
+  const target = new Date(d+'T00:00:00');
+  return Math.round((target-today)/86400000);
+}
+function ageString(dob){
+  if(!dob) return 'age unknown';
+  const b = new Date(dob+'T00:00:00');
+  if(isNaN(b)) return 'age unknown';
+  const now = new Date();
+  let months = (now.getFullYear()-b.getFullYear())*12 + (now.getMonth()-b.getMonth());
+  if(now.getDate() < b.getDate()) months--;
+  if(months < 0) months = 0;
+  if(months < 12) return months + (months===1?' month':' months');
+  const years = Math.floor(months/12);
+  const remMonths = months%12;
+  return years + (years===1?' year':' years') + (remMonths ? ', ' + remMonths + (remMonths===1?' mo':' mo') : '');
+}
+function roleLabel(v){ const r = ROLES.find(r=>r.v===v); return r ? r.l : v; }
+function dueStatusClass(days){
+  if(days < 0) return 'overdue';
+  if(days <= 14) return 'due-soon';
+  return 'ok';
+}
+function dueLabel(days){
+  if(days < 0) return Math.abs(days) + 'd overdue';
+  if(days === 0) return 'due today';
+  return 'due in ' + days + 'd';
+}
+
+function dogHealthLogs(dogId){
+  return state.healthLogs.filter(h=>h.dogId===dogId).sort((a,b)=> b.date.localeCompare(a.date));
+}
+function dogTrainingLogs(dogId){
+  return state.trainingLogs.filter(t=>t.dogId===dogId).sort((a,b)=> b.date.localeCompare(a.date));
+}
+function dogFeedingLogs(dogId){
+  return state.feedingLogs.filter(f=>f.dogId===dogId).sort((a,b)=> b.date.localeCompare(a.date));
+}
+function dogMedicationLogs(dogId){
+  return state.medicationLogs.filter(m=>m.dogId===dogId).sort((a,b)=> b.date.localeCompare(a.date));
+}
+function foodItemById(id){ return state.foodItems.find(f=>f.id===id); }
+function medicineItemById(id){ return state.medicineItems.find(m=>m.id===id); }
+function foodBatchesByName(name){
+  return state.foodItems.filter(f=>f.name===name).sort((a,b)=>(a.purchaseDate||'').localeCompare(b.purchaseDate||''));
+}
+function medicineBatchesByName(name){
+  return state.medicineItems.filter(m=>m.name===name).sort((a,b)=>(a.purchaseDate||'').localeCompare(b.purchaseDate||''));
+}
+function uniqueFoodNames(){
+  const seen = new Set(); const names = [];
+  state.foodItems.forEach(f=>{ if(f.name && !seen.has(f.name)){ seen.add(f.name); names.push(f.name); } });
+  return names;
+}
+function uniqueMedicineNames(){
+  const seen = new Set(); const names = [];
+  state.medicineItems.forEach(m=>{ if(m.name && !seen.has(m.name)){ seen.add(m.name); names.push(m.name); } });
+  return names;
+}
+function foodTotalStock(name, asOfDate){
+  return round2(foodBatchesByName(name).filter(f=> !asOfDate || (f.purchaseDate && f.purchaseDate<=asOfDate)).reduce((s,f)=>s+(f.remainingQty||0),0));
+}
+function medicineTotalStock(name, asOfDate){
+  return round2(medicineBatchesByName(name).filter(m=> !asOfDate || (m.purchaseDate && m.purchaseDate<=asOfDate)).reduce((s,m)=>s+(m.remainingQty||0),0));
+}
+function foodUnitFor(name){ const b = state.foodItems.find(f=>f.name===name); return b ? b.unit : ''; }
+function medicineUnitFor(name){ const b = state.medicineItems.find(m=>m.name===name); return b ? b.unit : ''; }
+function deductFoodStock(name, amount, date){
+  let remaining = amount;
+  const batches = foodBatchesByName(name).filter(f=> !date || (f.purchaseDate && f.purchaseDate<=date));
+  for(const b of batches){
+    if(remaining<=0) break;
+    const take = Math.min(b.remainingQty, remaining);
+    b.remainingQty = round2(b.remainingQty - take);
+    remaining = round2(remaining - take);
+  }
+  return remaining<=0;
+}
+function deductMedicineStock(name, amount, date){
+  let remaining = amount;
+  const batches = medicineBatchesByName(name).filter(m=> !date || (m.purchaseDate && m.purchaseDate<=date));
+  for(const b of batches){
+    if(remaining<=0) break;
+    const take = Math.min(b.remainingQty, remaining);
+    b.remainingQty = round2(b.remainingQty - take);
+    remaining = round2(remaining - take);
+  }
+  return remaining<=0;
+}
+function restoreFoodStock(name, amount, date){
+  // reverses a deduction as closely as possible: add back to the most recently-drawn eligible batch(es), newest first
+  let remaining = amount;
+  const batches = foodBatchesByName(name).filter(f=> !date || (f.purchaseDate && f.purchaseDate<=date)).reverse();
+  for(const b of batches){
+    if(remaining<=0) break;
+    b.remainingQty = round2(b.remainingQty + remaining);
+    remaining = 0;
+    break;
+  }
+  if(remaining>0 && state.foodItems.length){
+    // fallback: no eligible batch found (e.g. all deleted) — add to the newest existing batch of this name, if any
+    const any = foodBatchesByName(name).slice(-1)[0];
+    if(any) any.remainingQty = round2(any.remainingQty + remaining);
+  }
+}
+function restoreMedicineStock(name, amount, date){
+  let remaining = amount;
+  const batches = medicineBatchesByName(name).filter(m=> !date || (m.purchaseDate && m.purchaseDate<=date)).reverse();
+  for(const b of batches){
+    if(remaining<=0) break;
+    b.remainingQty = round2(b.remainingQty + remaining);
+    remaining = 0;
+    break;
+  }
+  if(remaining>0 && state.medicineItems.length){
+    const any = medicineBatchesByName(name).slice(-1)[0];
+    if(any) any.remainingQty = round2(any.remainingQty + remaining);
+  }
+}
+function handlerById(id){ return state.handlers.find(h=>h.id===id); }
+function handlerName(id){ const h = handlerById(id); return h ? ((h.rank?h.rank+' ':'')+h.name) : null; }
+function handlerOptions(selectedId){
+  const sorted = state.handlers.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(sorted.length===0) return `<option value="">— No handlers added yet —</option>`;
+  return `<option value="" ${!selectedId?'selected':''}>— Select handler —</option>` +
+    sorted.map(h=>`<option value="${h.id}" ${selectedId===h.id?'selected':''}>${esc((h.rank?h.rank+' ':'')+h.name)}</option>`).join('');
+}
+function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
+function qtyLabel(amount, unit){ return amount + ' ' + unit; }
+function dogRations(dog){
+  let rations = [];
+  if(dog.rations && dog.rations.length) rations = dog.rations;
+  else if(dog.rationFoodId && dog.rationAmount) rations = [{foodItemId:dog.rationFoodId, amount:dog.rationAmount}];
+  return rations.map(r=>{
+    if(r.foodName) return r;
+    if(r.foodItemId){
+      const item = foodItemById(r.foodItemId);
+      return item ? {foodName:item.name, amount:r.amount} : null;
+    }
+    return null;
+  }).filter(Boolean);
+}
+function resizeImageFile(file, maxDim, quality, format){
+  format = format || 'image/jpeg';
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL(format, quality));
+      };
+      img.onerror = () => reject(new Error('Could not read image'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+function canAdd(){ return state.role==='admin' || state.role==='data_entry'; }
+function canManage(){ return state.role==='admin'; }
+function roleLabelText(){
+  return roleLabelFor(state.role);
+}
+function roleLabelFor(r){
+  return r==='admin' ? 'Admin' : r==='data_entry' ? 'Data Entry' : r==='viewer' ? 'Viewer' : '';
+}
+
+/* ---------------- Report date-range helpers ---------------- */
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function todayRange(){ return {start:todayISO(), end:todayISO()}; }
+function yearRange(offset){
+  const y = new Date(todayISO()+'T00:00:00').getFullYear()+offset;
+  return {start: y+'-01-01', end: y+'-12-31'};
+}
+function weekRange(offset){
+  const now = new Date(todayISO()+'T00:00:00');
+  const day = now.getDay();
+  const diffToMonday = (day===0 ? -6 : 1-day);
+  const monday = new Date(now); monday.setDate(now.getDate()+diffToMonday+offset*7);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  return {start:ymd(monday), end:ymd(sunday)};
+}
+function monthRange(offset){
+  const now = new Date(todayISO()+'T00:00:00');
+  const first = new Date(now.getFullYear(), now.getMonth()+offset, 1);
+  const last = new Date(now.getFullYear(), now.getMonth()+offset+1, 0);
+  return {start:ymd(first), end:ymd(last)};
+}
+function reportFrameRange(){
+  const f = state.reportFrame;
+  if(f==='today') return todayRange();
+  if(f==='this-week') return weekRange(0);
+  if(f==='next-week') return weekRange(1);
+  if(f==='this-month') return monthRange(0);
+  if(f==='next-month') return monthRange(1);
+  if(f==='this-year') return yearRange(0);
+  if(f==='custom') return {start: state.reportStart||todayISO(), end: state.reportEnd||todayISO()};
+  return weekRange(0);
+}
+
+function computeFoodStatus(f){
+  if(f.remainingQty<=0) return 'overdue';
+  if(f.reorderThreshold!=null && f.remainingQty<=f.reorderThreshold) return 'due-soon';
+  if(f.expiryDate){
+    const days = daysUntil(f.expiryDate);
+    if(days<0) return 'overdue';
+    if(days<=14) return 'due-soon';
+  }
+  return 'ok';
+}
+function computeStockStatus(item){ return computeFoodStatus(item); }
+
+function computeDogStatus(dogId){
+  const upcoming = state.healthLogs.filter(h=>h.dogId===dogId && h.nextDueDate);
+  if(upcoming.length===0) return 'none';
+  let best = null;
+  upcoming.forEach(h=>{
+    const d = daysUntil(h.nextDueDate);
+    if(best===null || d < best) best = d;
+  });
+  return dueStatusClass(best);
+}
+
+function computeAlerts(){
+  const items = [];
+  state.healthLogs.forEach(h=>{
+    if(!h.nextDueDate) return;
+    const days = daysUntil(h.nextDueDate);
+    if(days <= 14){
+      const dog = state.dogs.find(d=>d.id===h.dogId);
+      items.push({ sortKey:days, name: dog ? dog.name : 'Unknown dog', detail:h.type, badge:dueLabel(days), urgent: days<0 });
+    }
+  });
+  state.foodItems.forEach(f=>{
+    if(f.expiryDate && f.remainingQty>0){
+      const days = daysUntil(f.expiryDate);
+      if(days <= 14){
+        items.push({ sortKey:days, name:f.name, detail:'Expiring (food, batch from '+fmtDate(f.purchaseDate)+')', badge:dueLabel(days), urgent: days<0 });
+      }
+    }
+  });
+  uniqueFoodNames().forEach(name=>{
+    const batches = foodBatchesByName(name);
+    const withThreshold = batches.slice().reverse().find(b=>b.reorderThreshold!=null);
+    const threshold = withThreshold ? withThreshold.reorderThreshold : null;
+    if(threshold==null) return;
+    const total = foodTotalStock(name);
+    if(total<=threshold){
+      items.push({ sortKey:-9999, name, detail:'Food running low (collective, across '+batches.length+' batch'+(batches.length===1?'':'es')+')', badge:qtyLabel(total,foodUnitFor(name))+' left', urgent: total<=0 });
+    }
+  });
+  state.medicineItems.forEach(m=>{
+    if(m.expiryDate && m.remainingQty>0){
+      const days = daysUntil(m.expiryDate);
+      if(days <= 14){
+        items.push({ sortKey:days, name:m.name, detail:'Expiring (medicine, batch from '+fmtDate(m.purchaseDate)+')', badge:dueLabel(days), urgent: days<0 });
+      }
+    }
+  });
+  uniqueMedicineNames().forEach(name=>{
+    const batches = medicineBatchesByName(name);
+    const withThreshold = batches.slice().reverse().find(b=>b.reorderThreshold!=null);
+    const threshold = withThreshold ? withThreshold.reorderThreshold : null;
+    if(threshold==null) return;
+    const total = medicineTotalStock(name);
+    if(total<=threshold){
+      items.push({ sortKey:-9999, name, detail:'Medicine running low (collective, across '+batches.length+' batch'+(batches.length===1?'':'es')+')', badge:qtyLabel(total,medicineUnitFor(name))+' left', urgent: total<=0 });
+    }
+  });
+  items.sort((a,b)=> a.sortKey - b.sortKey);
+  return items;
+}
+
+function filteredDogs(){
+  const q = (state.search||'').trim().toLowerCase();
+  let list = state.dogs;
+  if(q){
+    list = list.filter(d => (d.name||'').toLowerCase().includes(q) || (d.breed||'').toLowerCase().includes(q));
+  }
+  return list;
+}
+
+/* ---------------- Icons ---------------- */
+const ICONS = {
+  tag: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>',
+  back: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+  gear: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>',
+  paw: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/><circle cx="5" cy="14" r="2"/><circle cx="19" cy="14" r="2"/><path d="M12 14c-3 0-5 2-5 4.5S9 22 12 22s5-1 5-3.5S15 14 12 14Z"/></svg>',
+  bowl: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 0 16 0"/><path d="M3.5 12h17"/><path d="M4 12c0-1 .6-2 2-2h12c1.4 0 2 1 2 2"/><path d="M9 5c0 1.4 1 2 3 2s3-.6 3-2"/></svg>',
+  pill: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
+  person: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>',
+  clipboard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>',
+  heart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 8.6a5.5 5.5 0 0 0-9.8-3.5A5.5 5.5 0 0 0 2 8.6c0 5 9 11.4 9 11.4s9-6.4 9-11.4Z"/><path d="M7 12h2l1.5-3 2 6L14 12h3"/></svg>',
+  target: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  menu: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>',
+  close: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+  mail: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  phone: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>',
+  bell: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'
+};
+
+/* ---------------- Render: role & settings ---------------- */
+function renderLoginScreen(){
+  return `
+  <div style="padding-top:60px; text-align:center;">
+    <div class="tag-icon${state.settings.logoDataUrl ? ' has-logo' : ''}" style="margin:0 auto 14px; ${logoBoxStyle(44,'logoScaleRolePicker')}">${state.settings.logoDataUrl ? `<img src="${state.settings.logoDataUrl}" alt="Logo" />` : ICONS.tag}</div>
+    ${customHeadingLine(20)}<h1 style="margin-bottom:4px; font-size:20px; color:var(--spruce-dark);">Kennel Board</h1>
+    <p style="font-size:13px; color:var(--ink-soft); margin-bottom:24px;">Sign in to continue</p>
+    <form novalidate id="login-form" class="form-card" style="max-width:300px; margin:0 auto; text-align:left;">
+      <div class="fld"><label>Email</label><input type="email" name="email" required autocomplete="username" /></div>
+      <div class="fld"><label>Password</label><input type="password" name="password" required autocomplete="current-password" /></div>
+      ${state.authError ? `<div style="color:var(--rust); font-size:12.5px; margin-bottom:8px;">${esc(state.authError)}</div>` : ''}
+      <button type="submit" class="btn full" id="login-submit-btn">Sign in</button>
+    </form>
+    <p class="footnote" style="margin-top:22px; max-width:280px; margin-left:auto; margin-right:auto;">Ask your administrator for a login if you don't have one yet.</p>
+  </div>`;
+}
+function renderRolePicker(){
+  return `
+  <div style="padding-top:50px; text-align:center;">
+    <div class="tag-icon${state.settings.logoDataUrl ? ' has-logo' : ''}" style="margin:0 auto 14px; ${logoBoxStyle(44,'logoScaleRolePicker')}">${state.settings.logoDataUrl ? `<img src="${state.settings.logoDataUrl}" alt="Logo" />` : ICONS.tag}</div>
+    ${customHeadingLine(20)}<h1 style="margin-bottom:4px; font-size:20px; color:var(--spruce-dark);">Kennel Board</h1>
+    <p style="font-size:13px; color:var(--ink-soft); margin-bottom:26px;">Who's using this device?</p>
+    <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
+      <button class="btn full" data-action="choose-role" data-role="admin">Admin</button>
+      <button class="btn secondary full" data-action="choose-role" data-role="data_entry">Data Entry</button>
+      <button class="btn secondary full" data-action="choose-role" data-role="viewer">Viewer</button>
+    </div>
+    ${state.pendingRole ? renderPinForm() : ''}
+    <div style="max-width:280px; margin:18px auto 0;">
+      <label class="btn ghost full" style="cursor:pointer; display:flex; justify-content:center;">Import backup<input type="file" accept="application/json,.json" id="import-backup-input" style="display:none;" /></label>
+    </div>
+    <p class="footnote" style="margin-top:20px; max-width:300px; margin-left:auto; margin-right:auto;">This chooses a view mode for whoever's on this device right now — it's a way to keep records tidy, not secure login.</p>
+  </div>`;
+}
+function renderPinForm(){
+  return `
+  <form novalidate id="pin-form" class="form-card" style="max-width:280px; margin:16px auto 0; text-align:left;">
+    <div class="fld"><label>${esc(roleLabelFor(state.pendingRole))} PIN</label><input type="password" inputmode="numeric" name="pin" placeholder="Enter PIN" /></div>
+    ${state.pinError ? `<div style="color:var(--rust); font-size:12.5px; margin-bottom:8px;">${esc(state.pinError)}</div>` : ''}
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-action="cancel-pin">Cancel</button>
+      <button type="submit" class="btn">Unlock</button>
+    </div>
+  </form>`;
+}
+function renderContactPage(){
+  const c = {
+    orgName: state.settings.contactOrgName || '',
+    phone: state.settings.contactPhone || '',
+    email: state.settings.contactEmail || '',
+    address: state.settings.contactAddress || '',
+    notes: state.settings.contactNotes || ''
+  };
+  if(!canManage()){
+    const hasAny = c.orgName || c.phone || c.email || c.address || c.notes;
+    return `
+      <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:14px;">Contact Us</h1>
+      ${!hasAny ? `<div class="empty-state">No contact details have been added yet.</div>` : `
+        <div class="form-card">
+          ${c.orgName ? `<div class="info-row"><span class="k">Organization</span><span class="v">${esc(c.orgName)}</span></div>` : ''}
+          ${c.phone ? `<div class="info-row"><span class="k">Phone</span><span class="v"><a href="tel:${esc(c.phone)}">${esc(c.phone)}</a></span></div>` : ''}
+          ${c.email ? `<div class="info-row"><span class="k">Email</span><span class="v"><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></span></div>` : ''}
+          ${c.address ? `<div class="info-row"><span class="k">Address</span><span class="v">${esc(c.address)}</span></div>` : ''}
+        </div>
+        ${c.notes ? `<div class="notes-block">${esc(c.notes)}</div>` : ''}
+      `}
+    `;
+  }
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:6px;">Contact Us</h1>
+    <p class="fld-hint" style="margin-bottom:14px;">These details are visible to everyone using this device — Admin, Data Entry, and Viewer alike.</p>
+    <form novalidate id="contact-form" class="form-card">
+      <div class="fld"><label>Organization / Kennel name</label><input name="orgName" value="${esc(c.orgName)}" placeholder="e.g. City K9 Unit" /></div>
+      <div class="fld-row">
+        <div class="fld"><label>Phone</label><input type="tel" name="phone" value="${esc(c.phone)}" placeholder="e.g. +92 300 1234567" /></div>
+        <div class="fld"><label>Email</label><input type="email" name="email" value="${esc(c.email)}" placeholder="e.g. info@example.com" /></div>
+      </div>
+      <div class="fld"><label>Address</label><input name="address" value="${esc(c.address)}" placeholder="Street, city" /></div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Office hours, alternate contacts, etc.">${esc(c.notes)}</textarea></div>
+      <div class="form-actions">
+        <button type="submit" class="btn full">Save</button>
+      </div>
+    </form>
+  `;
+}
+function renderSettings(){
+  const pins = state.settings.pins || {};
+  return `
+  <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:6px;">Settings</h1>
+
+  <h3 style="font-size:14px; color:var(--spruce-dark); margin:16px 0 8px;">Branding</h3>
+  <div class="form-card">
+    <div class="photo-picker">
+      <div class="photo-preview${state.settings.logoDataUrl ? ' logo-checker' : ''}" id="logo-preview" style="border-radius:12px; ${state.settings.logoDataUrl ? '' : 'background:var(--spruce); color:var(--brass-light);'}">
+        ${state.settings.logoDataUrl ? `<img src="${state.settings.logoDataUrl}" alt="Logo" style="object-fit:contain;" />` : ICONS.tag}
+      </div>
+      <div class="photo-actions">
+        <label class="btn secondary" style="cursor:pointer; text-align:center;">Change logo<input type="file" accept="image/*" id="logo-input" style="display:none;" /></label>
+        <button type="button" class="btn ghost" id="logo-remove-btn" data-action="remove-logo" style="${state.settings.logoDataUrl?'':'display:none;'}">Remove</button>
+      </div>
+    </div>
+    <p class="fld-hint" style="margin-top:10px;">PNGs with a transparent background are supported and stay transparent.</p>
+    <div class="fld-row" style="margin-top:10px;">
+      <div class="fld" style="margin-bottom:0;"><label>Top bar size</label>
+        <div style="display:flex; align-items:center; gap:6px;"><input type="number" min="25" max="300" step="5" id="logo-scale-topbar" value="${esc(state.settings.logoScaleTopbar||100)}" style="text-align:right;" /><span>%</span></div>
+      </div>
+      <div class="fld" style="margin-bottom:0;"><label>Sidebar size</label>
+        <div style="display:flex; align-items:center; gap:6px;"><input type="number" min="25" max="300" step="5" id="logo-scale-sidebar" value="${esc(state.settings.logoScaleSidebar||100)}" style="text-align:right;" /><span>%</span></div>
+      </div>
+    </div>
+    <div class="fld" style="margin-top:10px; margin-bottom:0;"><label>Role-picker screen size</label>
+      <div style="display:flex; align-items:center; gap:6px; max-width:160px;"><input type="number" min="25" max="300" step="5" id="logo-scale-rolepicker" value="${esc(state.settings.logoScaleRolePicker||100)}" style="text-align:right;" /><span>%</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:14px; color:var(--spruce-dark); margin:18px 0 8px;">Text Heading</h3>
+  <form novalidate id="heading-form" class="form-card">
+    <div class="fld"><label>Heading text</label><input name="headingText" value="${esc(state.settings.headingText||'')}" placeholder="Kennel Board" /></div>
+    <div class="fld-row">
+      <div class="fld"><label>Font</label>
+        <select name="headingFont">
+          ${HEADING_FONTS.map(f=>`<option value="${esc(f.v)}" ${(state.settings.headingFont||'')===f.v?'selected':''}>${f.l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld"><label>Size</label>
+        <select name="headingScale">
+          ${HEADING_SIZES.map(s=>`<option value="${s.v}" ${(state.settings.headingScale||'1')===s.v?'selected':''}>${s.l}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fld"><label>Color</label>
+      <input type="color" name="headingColor" value="${state.settings.headingColor||'#22392d'}" style="height:42px; padding:4px; cursor:pointer;" />
+    </div>
+    <p class="fld-hint" style="margin:2px 0 10px;">Shows as a line above "Kennel Board" — on the top bar, the sidebar (color stays fixed there for readability against its dark background), and the "Who's using this device?" screen. Printed reports show your text above "Kennel Board" too, in a fixed professional style.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn full">Save</button>
+    </div>
+  </form>
+
+  <h3 style="font-size:14px; color:var(--spruce-dark); margin:18px 0 8px;">Access PINs</h3>
+  <p class="fld-hint" style="margin-bottom:10px;">Set a PIN for any role to add a light layer of protection when switching to it on a shared device. This isn't secure authentication — treat it as a deterrent, not a lock. Leave a field blank for no PIN.</p>
+  <form novalidate id="settings-form" class="form-card">
+    <div class="fld"><label>Admin PIN</label>
+      <input type="password" inputmode="numeric" name="adminPin" value="${esc(pins.admin||'')}" placeholder="No PIN" />
+    </div>
+    <div class="fld"><label>Data Entry PIN</label>
+      <input type="password" inputmode="numeric" name="dataEntryPin" value="${esc(pins.data_entry||'')}" placeholder="No PIN" />
+    </div>
+    <div class="fld"><label>Viewer PIN</label>
+      <input type="password" inputmode="numeric" name="viewerPin" value="${esc(pins.viewer||'')}" placeholder="No PIN" />
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-action="close-settings">Cancel</button>
+      <button type="submit" class="btn">Save</button>
+    </div>
+  </form>
+
+  <h3 style="font-size:14px; color:var(--spruce-dark); margin:18px 0 8px;">Backup &amp; Restore</h3>
+  <div class="form-card">
+    <p class="fld-hint" style="margin-bottom:12px;">Save every record to a file in your own storage — phone, computer, or a cloud drive you choose — independent of this browser or device. To restore from a backup, use the Import backup option on the role-selection screen (switch role, then Import backup).</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="button" class="btn secondary" data-action="export-backup">Export backup</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Render: shell pieces ---------------- */
+function backBar(action, label){
+  return `<div class="topbar with-back">
+    <button class="hamburger-btn" data-action="toggle-sidebar" aria-label="Menu">${ICONS.menu}</button>
+    <button class="back-btn" data-action="${action}">${ICONS.back} ${esc(label)}</button>
+  </div>`;
+}
+function renderTopbar(){
+  const topLevel = ['dashboard','foodInventory','medicineInventory','handlersInventory','reports'];
+  if(topLevel.includes(state.view)){
+    return `
+    <div class="topbar">
+      <button class="hamburger-btn" data-action="toggle-sidebar" aria-label="Menu">${ICONS.menu}</button>
+      <div class="tag-icon${state.settings.logoDataUrl ? ' has-logo' : ''}" style="${logoBoxStyle(34,'logoScaleTopbar')}">${state.settings.logoDataUrl ? `<img src="${state.settings.logoDataUrl}" alt="Logo" />` : ICONS.tag}</div>
+      <div class="titles">
+        ${customHeadingLine(19)}<h1>Kennel Board</h1>
+        <p>Health, training &amp; supply tracker</p>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+        ${state.role==='admin' ? `<button class="icon-btn" data-action="open-settings" aria-label="Settings">${ICONS.gear}</button>` : ''}
+        <button class="role-pill" data-action="switch-role">${esc(roleLabelText())}</button>
+      </div>
+    </div>`;
+  }
+  if(state.view==='foodForm') return backBar('go-food','Food Stock');
+  if(state.view==='medicineForm') return backBar('go-medicine','Medicine');
+  if(state.view==='handlerForm') return backBar('go-handlers','Handlers');
+  if(state.view==='reportView') return backBar('go-reports','Reports');
+  if(state.view==='settings') return backBar('close-settings','Back');
+  if(state.view==='contact') return backBar('go-dashboard','Roster');
+  return backBar('go-dashboard','Roster');
+}
+
+function renderBoard(){
+  const alerts = computeAlerts();
+  let body;
+  if(alerts.length===0){
+    body = `<div class="board-empty">All caught up — nothing due or running low.</div>`;
+  }else{
+    body = `<div class="board-list">${alerts.map(a=>`
+      <div class="board-item ${a.urgent?'overdue':''}">
+        <div class="bi-left">
+          <div class="bi-name">${esc(a.name)}</div>
+          <div class="bi-type">${esc(a.detail)}</div>
+        </div>
+        <div class="bi-due">${esc(a.badge)}</div>
+      </div>
+    `).join('')}</div>`;
+  }
+  return `
+  <div class="board">
+    <div class="board-head"><span class="board-pin"></span><h2>Today's Board</h2></div>
+    ${body}
+  </div>`;
+}
+
+/* ---------------- Render: dashboard ---------------- */
+function renderRosterCards(dogsArr){
+  if(dogsArr.length===0){
+    if(state.dogs.length===0){
+      return `<div class="empty-state">No dogs on the roster yet.<br>Tap the <strong>+</strong> button to add your first dog.</div>`;
+    }
+    return `<div class="empty-state">No dogs match "${esc(state.search)}".</div>`;
+  }
+  return dogsArr.map(d=>{
+    const idx = state.dogs.findIndex(x=>x.id===d.id) + 1;
+    const status = computeDogStatus(d.id);
+    return `
+    <div class="dog-card" data-action="view-dog" data-id="${d.id}">
+      <div class="avatar-wrap">
+        <div class="avatar">${d.photoDataUrl ? `<img src="${d.photoDataUrl}" alt="" />` : esc((d.name||'?').charAt(0).toUpperCase())}</div>
+        <span class="status-dot ${status}"></span>
+      </div>
+      <div class="dc-main">
+        <div class="eyebrow">RUN ${String(idx).padStart(2,'0')}</div>
+        <div class="name">${esc(d.name)}</div>
+        <div class="sub">${esc(d.breed||'Breed unknown')} · ${esc(ageString(d.dob))}</div>
+      </div>
+      <span class="badge role-${d.role}">${esc(roleLabel(d.role))}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSidebar(){
+  if(!state.role) return '';
+  const items = [
+    {view:'dashboard', action:'go-dashboard', label:'Roster', icon:ICONS.paw},
+    {view:'foodInventory', action:'go-food', label:'Food Stock', icon:ICONS.bowl},
+    {view:'medicineInventory', action:'go-medicine', label:'Medicine', icon:ICONS.pill},
+    {view:'handlersInventory', action:'go-handlers', label:'Handlers', icon:ICONS.person},
+    {view:'reports', action:'go-reports', label:'Reports', icon:ICONS.clipboard}
+  ];
+  const groupOf = {
+    dashboard:'dashboard', dogDetail:'dashboard', dogForm:'dashboard',
+    foodInventory:'foodInventory', foodForm:'foodInventory',
+    medicineInventory:'medicineInventory', medicineForm:'medicineInventory',
+    handlersInventory:'handlersInventory', handlerForm:'handlersInventory',
+    reports:'reports', reportView:'reports'
+  };
+  const activeGroup = groupOf[state.view] || '';
+  return `
+    <div class="sidebar-head">
+      <div class="tag-icon${state.settings.logoDataUrl ? ' has-logo' : ''}" style="${logoBoxStyle(34,'logoScaleSidebar')}">${state.settings.logoDataUrl ? `<img src="${state.settings.logoDataUrl}" alt="Logo" />` : ICONS.tag}</div>
+      <div class="titles">${customHeadingLine(16.5, '#fff')}<h1>Kennel Board</h1><p>Health, training &amp; supply tracker</p></div>
+    </div>
+    <div class="sidebar-nav">
+      ${items.map(it=>`<button class="sidebar-link ${activeGroup===it.view?'active':''}" data-action="${it.action}">${it.icon}<span>${it.label}</span></button>`).join('')}
+    </div>
+    <div class="sidebar-foot">
+      <button class="sidebar-link ${state.view==='contact'?'active':''}" data-action="go-contact">${ICONS.mail}<span>Contact Us</span></button>
+      ${state.role==='admin' ? `<button class="sidebar-link ${state.view==='settings'?'active':''}" data-action="open-settings">${ICONS.gear}<span>Settings</span></button>` : ''}
+      <button class="sidebar-link" data-action="switch-role">${ICONS.target}<span>${esc(roleLabelText())}</span></button>
+      <button class="sidebar-link" data-action="sign-out">${ICONS.close}<span>Sign out (${esc(state.authUser?state.authUser.email:'')})</span></button>
+    </div>
+  `;
+}
+
+function renderDashboard(){
+  return `
+    ${renderBoard()}
+    <div class="roster-header">
+      <h2>Roster <span class="count">(${state.dogs.length})</span></h2>
+      <input id="search-input" type="text" placeholder="Search name or breed…" value="${esc(state.search)}" />
+    </div>
+    <div id="roster-list">${renderRosterCards(filteredDogs())}</div>
+    ${canAdd() ? `<button class="fab" data-action="go-add-dog" aria-label="Add dog">+</button>` : ''}
+    <div class="footnote">Records are private to your account.</div>
+  `;
+}
+
+/* ---------------- Render: food inventory ---------------- */
+function renderFoodCards(){
+  if(state.foodItems.length===0){
+    return `<div class="empty-state">No food logged yet.<br>Tap the <strong>+</strong> button to log your first bulk purchase.</div>`;
+  }
+  return state.foodItems.map((f,i)=>{
+    const idx = i + 1;
+    const status = computeFoodStatus(f);
+    const expanded = state.expandedFoodId===f.id;
+    return `
+    <div class="food-card">
+      <div class="food-card-head" data-action="toggle-food" data-id="${f.id}">
+        <span class="status-dot ${status}"></span>
+        <div class="dc-main">
+          <div class="eyebrow">BATCH ${String(idx).padStart(2,'0')}</div>
+          <div class="name">${esc(f.name)}</div>
+          <div class="sub">${esc(f.type)}${f.storageLocation? ' · '+esc(f.storageLocation):''}</div>
+        </div>
+        <div class="qty mono" style="color:${f.remainingQty<=0?'var(--rust)':'var(--ink)'};">${qtyLabel(f.remainingQty, f.unit)}</div>
+      </div>
+      ${expanded ? renderFoodExpanded(f) : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderFoodExpanded(f){
+  const restockOpen = state.showRestockFormFor===f.id;
+  return `
+  <div class="food-expanded">
+    <div class="info-row"><span class="k">Purchased</span><span class="v">${f.purchaseDate? fmtDate(f.purchaseDate) : '—'}</span></div>
+    <div class="info-row"><span class="k">Expiry</span><span class="v">${f.expiryDate? fmtDate(f.expiryDate) : '—'}</span></div>
+    <div class="info-row"><span class="k">Low-stock alert</span><span class="v">${f.reorderThreshold!=null? qtyLabel(f.reorderThreshold, f.unit) : 'Not set'}</span></div>
+    ${f.notes ? `<div class="notes-block">${esc(f.notes)}</div>` : ''}
+    ${(canAdd()||canManage()) ? `
+    <div class="form-actions" style="margin-top:12px;">
+      ${canAdd() ? `<button type="button" class="btn secondary" data-action="toggle-restock" data-id="${f.id}">${restockOpen?'Cancel':'+ Restock'}</button>` : ''}
+      ${canManage() ? `<button type="button" class="btn ghost" data-action="edit-food" data-id="${f.id}">Edit</button>
+      <button type="button" class="icon-btn danger" data-action="delete-food" data-id="${f.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+    </div>` : ''}
+    ${restockOpen ? renderRestockForm(f) : ''}
+  </div>`;
+}
+
+function renderRestockForm(f){
+  return `
+  <form novalidate id="restock-form" data-id="${f.id}" class="form-card" style="margin-top:12px;">
+    <h3>Restock ${esc(f.name)}</h3>
+    <div class="fld"><label>Amount to add <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="amount" required placeholder="e.g. 10" /></div>
+    <div class="fld"><label>Date received</label><input type="date" name="date" value="${todayISO()}" /></div>
+    <div class="fld"><label>New expiry date (optional)</label><input type="date" name="expiryDate" value="${esc(f.expiryDate||'')}" /></div>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-action="toggle-restock" data-id="${f.id}">Cancel</button>
+      <button type="submit" class="btn">Add stock</button>
+    </div>
+  </form>`;
+}
+
+function renderFoodInventory(){
+  const names = uniqueFoodNames();
+  const totalsBlock = names.length ? `
+    <div class="form-card" style="margin-bottom:14px;">
+      <h3 style="font-size:13px; color:var(--spruce-dark); margin-bottom:8px;">Collective totals</h3>
+      ${names.map(n=>`<div class="info-row"><span class="k">${esc(n)}</span><span class="v">${esc(qtyLabel(foodTotalStock(n), foodUnitFor(n)))} <span style="color:var(--ink-soft); font-weight:400;">(${foodBatchesByName(n).length} batch${foodBatchesByName(n).length===1?'':'es'})</span></span></div>`).join('')}
+    </div>` : '';
+  return `
+    ${renderBoard()}
+        <div class="roster-header">
+      <h2>Food Stock <span class="count">(${state.foodItems.length})</span></h2>
+    </div>
+    ${totalsBlock}
+    <div id="food-list">${renderFoodCards()}</div>
+    ${canAdd() ? `<button class="fab" data-action="go-add-food" aria-label="Add food">+</button>` : ''}
+    <div class="footnote">Records are private to your account.</div>
+  `;
+}
+
+function renderFoodForm(){
+  const editing = state.editingFoodId ? state.foodItems.find(f=>f.id===state.editingFoodId) : null;
+  const f = editing || {name:'',type:FOOD_TYPES[0],unit:FOOD_UNITS[0],purchaseQty:'',purchaseDate:todayISO(),expiryDate:'',reorderThreshold:'',storageLocation:'',notes:''};
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:14px;">${editing?'Edit food item':'Log a bulk purchase'}</h1>
+    <form novalidate id="food-form" class="form-card">
+      <div class="fld"><label>Name <span class="req">*</span></label><input name="name" required value="${esc(f.name)}" placeholder="e.g. Large Breed Adult Kibble" /></div>
+      <div class="fld-row">
+        <div class="fld"><label>Type</label>
+          <select name="type">${FOOD_TYPES.map(t=>`<option value="${t}" ${f.type===t?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+        <div class="fld"><label>Unit</label>
+          <select name="unit">${FOOD_UNITS.map(u=>`<option value="${u}" ${f.unit===u?'selected':''}>${u}</option>`).join('')}</select>
+        </div>
+      </div>
+      ${editing ? '' : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(f.purchaseQty)}" placeholder="e.g. 20" /></div>`}
+      <div class="fld-row">
+        <div class="fld"><label>Purchase date</label><input type="date" name="purchaseDate" value="${esc(f.purchaseDate)}" /></div>
+        <div class="fld"><label>Expiry date</label><input type="date" name="expiryDate" value="${esc(f.expiryDate)}" /></div>
+      </div>
+      <div class="fld">
+        <label>Low-stock alert below</label>
+        <input type="number" step="0.01" min="0" name="reorderThreshold" value="${esc(f.reorderThreshold)}" placeholder="e.g. 5" />
+        <div class="fld-hint">Shows on Today's Board once stock drops to or below this.</div>
+      </div>
+      <div class="fld"><label>Storage location</label><input name="storageLocation" value="${esc(f.storageLocation)}" placeholder="e.g. Feed room, shelf 2" /></div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Supplier, cost, batch notes...">${esc(f.notes)}</textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="cancel-food-form">Cancel</button>
+        <button type="submit" class="btn">${editing?'Save changes':'Add to stock'}</button>
+      </div>
+      ${editing ? `<input type="hidden" name="recordId" value="${editing.id}" />` : ''}
+    </form>
+  `;
+}
+
+/* ---------------- Render: medicine inventory ---------------- */
+function renderMedicineCards(){
+  if(state.medicineItems.length===0){
+    return `<div class="empty-state">No medicine logged yet.${canAdd() ? '<br>Tap the <strong>+</strong> button to log your first item.' : ''}</div>`;
+  }
+  return state.medicineItems.map((m,i)=>{
+    const idx = i + 1;
+    const status = computeStockStatus(m);
+    const expanded = state.expandedMedicineId===m.id;
+    return `
+    <div class="food-card">
+      <div class="food-card-head" data-action="toggle-medicine" data-id="${m.id}">
+        <span class="status-dot ${status}"></span>
+        <div class="dc-main">
+          <div class="eyebrow">ITEM ${String(idx).padStart(2,'0')}</div>
+          <div class="name">${esc(m.name)}</div>
+          <div class="sub">${esc(m.type)}${m.storageLocation? ' · '+esc(m.storageLocation):''}</div>
+        </div>
+        <div class="qty mono" style="color:${m.remainingQty<=0?'var(--rust)':'var(--ink)'};">${qtyLabel(m.remainingQty, m.unit)}</div>
+      </div>
+      ${expanded ? renderMedicineExpanded(m) : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderMedicineExpanded(m){
+  const restockOpen = state.showMedRestockFormFor===m.id;
+  return `
+  <div class="food-expanded">
+    <div class="info-row"><span class="k">Purchased</span><span class="v">${m.purchaseDate? fmtDate(m.purchaseDate) : '—'}</span></div>
+    <div class="info-row"><span class="k">Expiry</span><span class="v">${m.expiryDate? fmtDate(m.expiryDate) : '—'}</span></div>
+    <div class="info-row"><span class="k">Low-stock alert</span><span class="v">${m.reorderThreshold!=null? qtyLabel(m.reorderThreshold, m.unit) : 'Not set'}</span></div>
+    ${m.notes ? `<div class="notes-block">${esc(m.notes)}</div>` : ''}
+    ${(canAdd()||canManage()) ? `
+    <div class="form-actions" style="margin-top:12px;">
+      ${canAdd() ? `<button type="button" class="btn secondary" data-action="toggle-med-restock" data-id="${m.id}">${restockOpen?'Cancel':'+ Restock'}</button>` : ''}
+      ${canManage() ? `<button type="button" class="btn ghost" data-action="edit-medicine" data-id="${m.id}">Edit</button>
+      <button type="button" class="icon-btn danger" data-action="delete-medicine" data-id="${m.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+    </div>` : ''}
+    ${restockOpen ? renderMedRestockForm(m) : ''}
+  </div>`;
+}
+
+function renderMedRestockForm(m){
+  return `
+  <form novalidate id="med-restock-form" data-id="${m.id}" class="form-card" style="margin-top:12px;">
+    <h3>Restock ${esc(m.name)}</h3>
+    <div class="fld"><label>Amount to add <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="amount" required placeholder="e.g. 30" /></div>
+    <div class="fld"><label>Date received</label><input type="date" name="date" value="${todayISO()}" /></div>
+    <div class="fld"><label>New expiry date (optional)</label><input type="date" name="expiryDate" value="${esc(m.expiryDate||'')}" /></div>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" data-action="toggle-med-restock" data-id="${m.id}">Cancel</button>
+      <button type="submit" class="btn">Add stock</button>
+    </div>
+  </form>`;
+}
+
+function renderMedicineInventory(){
+  const names = uniqueMedicineNames();
+  const totalsBlock = names.length ? `
+    <div class="form-card" style="margin-bottom:14px;">
+      <h3 style="font-size:13px; color:var(--spruce-dark); margin-bottom:8px;">Collective totals</h3>
+      ${names.map(n=>`<div class="info-row"><span class="k">${esc(n)}</span><span class="v">${esc(qtyLabel(medicineTotalStock(n), medicineUnitFor(n)))} <span style="color:var(--ink-soft); font-weight:400;">(${medicineBatchesByName(n).length} batch${medicineBatchesByName(n).length===1?'':'es'})</span></span></div>`).join('')}
+    </div>` : '';
+  return `
+    ${renderBoard()}
+        <div class="roster-header">
+      <h2>Medicine Stock <span class="count">(${state.medicineItems.length})</span></h2>
+    </div>
+    ${totalsBlock}
+    <div id="medicine-list">${renderMedicineCards()}</div>
+    ${canAdd() ? `<button class="fab" data-action="go-add-medicine" aria-label="Add medicine">+</button>` : ''}
+    <div class="footnote">Records are private to your account.</div>
+  `;
+}
+
+function renderMedicineForm(){
+  const editing = state.editingMedicineId ? state.medicineItems.find(m=>m.id===state.editingMedicineId) : null;
+  const m = editing || {name:'',type:MEDICINE_TYPES[0],unit:MEDICINE_UNITS[0],purchaseQty:'',purchaseDate:todayISO(),expiryDate:'',reorderThreshold:'',storageLocation:'',notes:''};
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:14px;">${editing?'Edit medicine item':'Log a bulk purchase'}</h1>
+    <form novalidate id="medicine-form" class="form-card">
+      <div class="fld"><label>Name <span class="req">*</span></label><input name="name" required value="${esc(m.name)}" placeholder="e.g. Amoxicillin 250mg" /></div>
+      <div class="fld-row">
+        <div class="fld"><label>Type</label>
+          <select name="type">${MEDICINE_TYPES.map(t=>`<option value="${t}" ${m.type===t?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+        <div class="fld"><label>Unit</label>
+          <select name="unit">${MEDICINE_UNITS.map(u=>`<option value="${u}" ${m.unit===u?'selected':''}>${u}</option>`).join('')}</select>
+        </div>
+      </div>
+      ${editing ? '' : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(m.purchaseQty)}" placeholder="e.g. 100" /></div>`}
+      <div class="fld-row">
+        <div class="fld"><label>Purchase date</label><input type="date" name="purchaseDate" value="${esc(m.purchaseDate)}" /></div>
+        <div class="fld"><label>Expiry date</label><input type="date" name="expiryDate" value="${esc(m.expiryDate)}" /></div>
+      </div>
+      <div class="fld">
+        <label>Low-stock alert below</label>
+        <input type="number" step="0.01" min="0" name="reorderThreshold" value="${esc(m.reorderThreshold)}" placeholder="e.g. 10" />
+        <div class="fld-hint">Shows on Today's Board once stock drops to or below this.</div>
+      </div>
+      <div class="fld"><label>Storage location</label><input name="storageLocation" value="${esc(m.storageLocation)}" placeholder="e.g. Medicine cabinet" /></div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Supplier, prescribing vet, batch notes...">${esc(m.notes)}</textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="cancel-medicine-form">Cancel</button>
+        <button type="submit" class="btn">${editing?'Save changes':'Add to stock'}</button>
+      </div>
+      ${editing ? `<input type="hidden" name="recordId" value="${editing.id}" />` : ''}
+    </form>
+  `;
+}
+
+function renderFeedingForm(dog){
+  const rations = dogRations(dog);
+  const defaultFoodName = rations[0] ? rations[0].foodName : '';
+  const defaultAmount = rations[0] ? rations[0].amount : '';
+  const names = uniqueFoodNames();
+  return `
+    <form novalidate id="feeding-form" class="form-card">
+      <div class="fld-row">
+        <div class="fld"><label>Date <span class="req">*</span></label><input type="date" name="date" required value="${todayISO()}" /></div>
+        <div class="fld"><label>Food item <span class="req">*</span></label>
+          <select name="foodName" required>
+            <option value="">— Select food —</option>
+            ${names.map(n=>`<option value="${esc(n)}" ${defaultFoodName===n?'selected':''}>${esc(n)} (${qtyLabel(foodTotalStock(n),foodUnitFor(n))} total)</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="fld"><label>Amount fed <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="amount" required value="${defaultAmount}" /></div>
+      <div class="fld"><label>Fed by (Handler) <span class="req">*</span></label>
+        <select name="handlerId" required>${handlerOptions(null)}</select>
+      </div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Optional"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="toggle-feeding-form">Cancel</button>
+        <button type="submit" class="btn">Save entry</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderFeedingTabContent(dog){
+  const rations = dogRations(dog);
+  const logs = dogFeedingLogs(dog.id);
+  const rationLine = rations.length ? `<div class="notes-block">Daily rations:<br>${
+    rations.map(r=> `<strong>${qtyLabel(r.amount, foodUnitFor(r.foodName))}</strong> of ${esc(r.foodName)}`).join('<br>')
+  }</div>` : '';
+  const list = logs.length===0 ? `<div class="empty-state">No feeding records yet.</div>` :
+    logs.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(fe=>{
+      const handler = handlerName(fe.handlerId);
+      return `
+      <div class="log-entry">
+        <div class="le-top">
+          <span class="le-date mono">${fmtDate(fe.date)}</span>
+          ${canManage() ? `<button class="le-del" data-action="delete-feeding" data-id="${fe.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+        </div>
+        <div style="margin-bottom:6px;"><span class="le-type">${esc(fe.foodName || 'Deleted food item')}</span></div>
+        <div class="le-notes">${qtyLabel(fe.amount, foodUnitFor(fe.foodName))} fed${fe.notes ? ' — '+esc(fe.notes) : ''}${handler ? ' · Fed by '+esc(handler) : ' · Handler not recorded'}</div>
+      </div>`;
+    }).join('');
+  return `
+    ${rationLine}
+    <div class="section-actions">
+      ${canAdd() && rations.length ? `<button class="btn secondary" data-action="toggle-quick-ration-form" data-id="${dog.id}">${state.showQuickRationForm?'Cancel':"Log today's rations"}</button>` : ''}
+      ${canAdd() ? `<button class="btn" data-action="toggle-feeding-form">${state.showFeedingForm?'Cancel':'+ Log feeding'}</button>` : ''}
+    </div>
+    ${state.showQuickRationForm ? renderQuickRationForm(dog) : ''}
+    ${state.showFeedingForm ? renderFeedingForm(dog) : ''}
+    ${list}
+  `;
+}
+function renderQuickRationForm(dog){
+  return `
+    <form novalidate id="quick-ration-form" class="form-card" data-id="${dog.id}">
+      <div class="fld"><label>Handler <span class="req">*</span></label>
+        <select name="handlerId" required>${handlerOptions(null)}</select>
+      </div>
+      <div class="fld-hint" style="margin-bottom:10px;">This will log ${dogRations(dog).length} ration${dogRations(dog).length===1?'':'s'} for today, credited to the handler above.</div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="toggle-quick-ration-form" data-id="${dog.id}">Cancel</button>
+        <button type="submit" class="btn">Confirm &amp; log</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderMedicineTabContent(dog){
+  const logs = dogMedicationLogs(dog.id);
+  const list = logs.length===0 ? `<div class="empty-state">No medication records yet.</div>` :
+    logs.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(me=>{
+      const handler = handlerName(me.handlerId);
+      return `
+      <div class="log-entry">
+        <div class="le-top">
+          <span class="le-date mono">${fmtDate(me.date)}</span>
+          ${canManage() ? `<button class="le-del" data-action="delete-medication" data-id="${me.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+        </div>
+        <div style="margin-bottom:6px;"><span class="le-type">${esc(me.medicineName || 'Deleted medicine item')}</span></div>
+        <div class="le-notes">${qtyLabel(me.amount, medicineUnitFor(me.medicineName))} given${me.reason ? ' — '+esc(me.reason) : ''}${me.notes ? ' — '+esc(me.notes) : ''}${handler ? ' · Given by '+esc(handler) : ' · Handler not recorded'}</div>
+      </div>`;
+    }).join('');
+  return `
+    <div class="section-actions">
+      ${canAdd() ? `<button class="btn" data-action="toggle-medication-form">${state.showMedicationForm?'Cancel':'+ Log medicine given'}</button>` : ''}
+    </div>
+    ${state.showMedicationForm ? renderMedicationForm(dog) : ''}
+    ${list}
+  `;
+}
+
+function renderMedicationForm(dog){
+  return `
+    <form novalidate id="medication-form" class="form-card">
+      <div class="fld-row">
+        <div class="fld"><label>Date <span class="req">*</span></label><input type="date" name="date" required value="${todayISO()}" /></div>
+        <div class="fld"><label>Medicine <span class="req">*</span></label>
+          <select name="medicineName" required>
+            <option value="">— Select medicine —</option>
+            ${uniqueMedicineNames().map(n=>`<option value="${esc(n)}">${esc(n)} (${qtyLabel(medicineTotalStock(n),medicineUnitFor(n))} total)</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="fld"><label>Amount given <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="amount" required /></div>
+      <div class="fld"><label>Reason</label><input name="reason" placeholder="e.g. Ear infection, routine deworming" /></div>
+      <div class="fld"><label>Given by (Handler) <span class="req">*</span></label>
+        <select name="handlerId" required>${handlerOptions(null)}</select>
+      </div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Optional"></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="toggle-medication-form">Cancel</button>
+        <button type="submit" class="btn">Save entry</button>
+      </div>
+    </form>
+  `;
+}
+
+/* ---------------- Render: handlers ---------------- */
+function renderHandlerCards(){
+  if(state.handlers.length===0){
+    return `<div class="empty-state">No handlers on record yet.${canAdd()?' Tap the + button to add one.':''}</div>`;
+  }
+  return state.handlers.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(h=>`
+    <div class="dog-card">
+      <div class="avatar">${h.photoDataUrl ? `<img src="${h.photoDataUrl}" alt="" />` : esc((h.name||'?').charAt(0).toUpperCase())}</div>
+      <div class="dc-main">
+        <div class="eyebrow">${esc(h.rank || 'HANDLER')}</div>
+        <div class="name">${esc(h.name)}</div>
+        <div class="sub">${h.svcNo?('Svc No '+esc(h.svcNo)+' · '):''}${esc(h.role||'—')}${h.deploymentDate?(' · Deployed '+fmtDate(h.deploymentDate)):''}</div>
+      </div>
+      ${canManage() ? `<div style="display:flex; gap:6px; flex-shrink:0;">
+        <button class="icon-btn" data-action="edit-handler" data-id="${h.id}" aria-label="Edit">${ICONS.edit}</button>
+        <button class="icon-btn danger" data-action="delete-handler" data-id="${h.id}" aria-label="Delete">${ICONS.trash}</button>
+      </div>` : ''}
+    </div>
+  `).join('');
+}
+function renderHandlersInventory(){
+  return `
+    ${renderBoard()}
+        <div class="roster-header">
+      <h2>Handlers <span class="count">(${state.handlers.length})</span></h2>
+    </div>
+    <div id="handlers-list">${renderHandlerCards()}</div>
+    ${canAdd() ? `<button class="fab" data-action="go-add-handler" aria-label="Add handler">+</button>` : ''}
+    <div class="footnote">Records are private to your account.</div>
+  `;
+}
+function renderHandlerForm(){
+  const editing = state.editingHandlerId ? state.handlers.find(h=>h.id===state.editingHandlerId) : null;
+  const h = editing || {rank:'', name:'', svcNo:'', role:'', deploymentDate:'', notes:''};
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:14px;">${editing?'Edit handler':'Add a handler'}</h1>
+    <form novalidate id="handler-form" class="form-card">
+      <div class="fld">
+        <label>Photo</label>
+        <div class="photo-picker">
+          <div class="photo-preview" id="handler-photo-preview">
+            ${state.handlerFormPhoto ? `<img src="${state.handlerFormPhoto}" alt="Handler photo" />` : `<span>${esc((h.name||'?').charAt(0).toUpperCase())}</span>`}
+          </div>
+          <div class="photo-actions" id="handler-photo-actions">
+            <label class="btn secondary" style="cursor:pointer; text-align:center;">Choose photo<input type="file" accept="image/*" id="handler-photo-input" style="display:none;" /></label>
+            <button type="button" class="btn ghost" id="handler-photo-remove-btn" data-action="remove-handler-photo" style="${state.handlerFormPhoto?'':'display:none;'}">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>Rank</label><input name="rank" value="${esc(h.rank)}" placeholder="e.g. Corporal" /></div>
+        <div class="fld"><label>Service Number</label><input name="svcNo" value="${esc(h.svcNo)}" placeholder="e.g. SVC-00123" class="mono" /></div>
+      </div>
+      <div class="fld"><label>Name <span class="req">*</span></label><input name="name" required value="${esc(h.name)}" placeholder="e.g. John Doe" /></div>
+      <div class="fld"><label>Role</label>
+        <input name="role" value="${esc(h.role)}" list="handler-role-suggestions" placeholder="e.g. Primary Handler" />
+        <datalist id="handler-role-suggestions">
+          <option value="Primary Handler"><option value="Assistant Handler"><option value="Trainer">
+          <option value="Kennel Master"><option value="Supervisor">
+        </datalist>
+      </div>
+      <div class="fld"><label>Date of Deployment</label><input type="date" name="deploymentDate" value="${esc(h.deploymentDate)}" /></div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Optional">${esc(h.notes||'')}</textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="cancel-handler-form">Cancel</button>
+        <button type="submit" class="btn">${editing?'Save changes':'Add handler'}</button>
+      </div>
+      ${editing ? `<input type="hidden" name="recordId" value="${editing.id}" />` : ''}
+    </form>
+  `;
+}
+
+/* ---------------- Render: reports ---------------- */
+function reportRow(dateStr, title, sub, badgeHtml){
+  return `
+  <div class="report-row">
+    <div class="rt-date mono">${dateStr?fmtDate(dateStr):'—'}</div>
+    <div class="rt-main">
+      <div class="rt-title">${esc(title)}</div>
+      ${sub?`<div class="rt-sub">${esc(sub)}</div>`:''}
+    </div>
+    <div class="rt-badge">${badgeHtml||''}</div>
+  </div>`;
+}
+function reportSection(title, rowsHtml){
+  return `
+    <div class="report-section">
+      <h3 class="report-section-title">${esc(title)}</h3>
+      ${rowsHtml ? `<div class="report-table">${rowsHtml}</div>` : `<div class="empty-state">Nothing to show.</div>`}
+    </div>
+  `;
+}
+function renderReportsHome(){
+  const cards = [
+    {id:'all', title:'All Activities', desc:'Everything conducted or scheduled across all dogs and handlers in a period.', icon:ICONS.clipboard},
+    {id:'upcoming', title:'Upcoming &amp; Due', desc:'Health due-dates, expiring stock, and low stock ahead.', icon:ICONS.bell},
+    {id:'health', title:'Health Report', desc:'Health records logged within a period.', icon:ICONS.heart},
+    {id:'training', title:'Training Report', desc:'Training sessions logged within a period.', icon:ICONS.target},
+    {id:'food', title:'Food Stock Report', desc:'Collective stock plus feeding activity in a period.', icon:ICONS.bowl},
+    {id:'medicine', title:'Medicine Stock Report', desc:'Collective stock plus doses given in a period.', icon:ICONS.pill},
+    {id:'handlers', title:'Handler Report', desc:'Every activity each handler conducted in a period.', icon:ICONS.person},
+    {id:'dogs', title:'Dog Activity Report', desc:'Every activity logged for each dog in a period.', icon:ICONS.paw}
+  ];
+  return `
+        <div class="roster-header"><h2>Reports</h2></div>
+    <div id="report-list">${cards.map(c=>`
+      <div class="dog-card" data-action="open-report" data-id="${c.id}">
+        <div class="report-icon">${c.icon}</div>
+        <div class="dc-main">
+          <div class="name">${c.title}</div>
+          <div class="sub">${c.desc}</div>
+        </div>
+      </div>
+    `).join('')}</div>
+    <div class="footnote">Reports are generated from your current records.</div>
+  `;
+}
+function renderReportFilters(){
+  if(state.reportType!=='dogs' && state.reportType!=='handlers') return '';
+  const dogs = state.dogs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const handlers = state.handlers.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return `
+    <div class="fld-row" style="flex-wrap:wrap; margin-bottom:12px;">
+      <div class="fld" style="min-width:130px; margin-bottom:8px;"><label>Dog</label>
+        <select id="report-filter-dog">
+          <option value="">All dogs</option>
+          ${dogs.map(d=>`<option value="${d.id}" ${state.reportFilterDog===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld" style="min-width:130px; margin-bottom:8px;"><label>Handler</label>
+        <select id="report-filter-handler">
+          <option value="">All handlers</option>
+          ${handlers.map(h=>`<option value="${h.id}" ${state.reportFilterHandler===h.id?'selected':''}>${esc((h.rank?h.rank+' ':'')+h.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld" style="min-width:130px; margin-bottom:8px;"><label>Activity type</label>
+        <select id="report-filter-type">
+          <option value="">All types</option>
+          <option value="health" ${state.reportFilterType==='health'?'selected':''}>Health</option>
+          <option value="training" ${state.reportFilterType==='training'?'selected':''}>Training</option>
+          <option value="feeding" ${state.reportFilterType==='feeding'?'selected':''}>Feeding</option>
+          <option value="medicine" ${state.reportFilterType==='medicine'?'selected':''}>Medicine</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
+function renderReportFilters(){
+  const dogsSorted = state.dogs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const handlersSorted = state.handlers.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return `
+    <div class="fld-row" style="margin-bottom:10px;">
+      <div class="fld" style="margin-bottom:0;"><label>Dog</label>
+        <select id="report-filter-dog">
+          <option value="">All dogs</option>
+          ${dogsSorted.map(d=>`<option value="${d.id}" ${state.reportFilterDog===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld" style="margin-bottom:0;"><label>Handler</label>
+        <select id="report-filter-handler">
+          <option value="">All handlers</option>
+          ${handlersSorted.map(h=>`<option value="${h.id}" ${state.reportFilterHandler===h.id?'selected':''}>${esc((h.rank?h.rank+' ':'')+h.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fld" style="margin-bottom:10px;"><label>Activity type</label>
+      <select id="report-filter-type">
+        <option value="">All activity types</option>
+        <option value="health" ${state.reportFilterType==='health'?'selected':''}>Health</option>
+        <option value="training" ${state.reportFilterType==='training'?'selected':''}>Training</option>
+        <option value="feeding" ${state.reportFilterType==='feeding'?'selected':''}>Feeding</option>
+        <option value="medicine" ${state.reportFilterType==='medicine'?'selected':''}>Medicine</option>
+      </select>
+    </div>
+  `;
+}
+function renderFrameSelector(){
+  const frames = [['today','Today'],['this-week','This Week'],['next-week','Next Week'],['this-month','This Month'],['next-month','Next Month'],['this-year','This Year'],['custom','Custom']];
+  return `
+    <div class="home-tabs" style="margin-bottom:10px;">
+      ${frames.map(([v,l])=>`<button class="hometab-btn ${state.reportFrame===v?'active':''}" data-action="set-report-frame" data-frame="${v}" style="flex:0 0 auto; padding:7px 12px;">${l}</button>`).join('')}
+    </div>
+    ${state.reportFrame==='custom' ? `
+      <div class="fld-row" style="margin-bottom:6px;">
+        <div class="fld"><label>From</label><input type="date" id="report-start" value="${state.reportStart||todayISO()}" /></div>
+        <div class="fld"><label>To</label><input type="date" id="report-end" value="${state.reportEnd||todayISO()}" /></div>
+      </div>
+    ` : ''}
+  `;
+}
+function renderUpcomingReport(range){
+  const healthRows = state.healthLogs
+    .filter(h=>h.nextDueDate && h.nextDueDate>=range.start && h.nextDueDate<=range.end)
+    .sort((a,b)=>a.nextDueDate.localeCompare(b.nextDueDate))
+    .map(h=>{
+      const dog = state.dogs.find(d=>d.id===h.dogId);
+      const days = daysUntil(h.nextDueDate);
+      const badge = `<span class="le-due ${dueStatusClass(days)}">${esc(dueLabel(days))}</span>`;
+      return reportRow(h.nextDueDate, (dog?dog.name:'Unknown dog')+' — '+h.type, h.notes, badge);
+    }).join('');
+  const foodExpRows = state.foodItems
+    .filter(f=>f.expiryDate && f.expiryDate>=range.start && f.expiryDate<=range.end)
+    .sort((a,b)=>a.expiryDate.localeCompare(b.expiryDate))
+    .map(f=>{
+      const days = daysUntil(f.expiryDate);
+      const badge = `<span class="le-due ${dueStatusClass(days)}">${esc(dueLabel(days))}</span>`;
+      return reportRow(f.expiryDate, f.name, qtyLabel(f.remainingQty,f.unit)+' remaining', badge);
+    }).join('');
+  const medExpRows = state.medicineItems
+    .filter(m=>m.expiryDate && m.expiryDate>=range.start && m.expiryDate<=range.end)
+    .sort((a,b)=>a.expiryDate.localeCompare(b.expiryDate))
+    .map(m=>{
+      const days = daysUntil(m.expiryDate);
+      const badge = `<span class="le-due ${dueStatusClass(days)}">${esc(dueLabel(days))}</span>`;
+      return reportRow(m.expiryDate, m.name, qtyLabel(m.remainingQty,m.unit)+' remaining', badge);
+    }).join('');
+  const lowFood = state.foodItems.filter(f=>f.reorderThreshold!=null && f.remainingQty<=f.reorderThreshold)
+    .map(f=> reportRow(null, f.name, 'Food', `<span class="le-due ${f.remainingQty<=0?'overdue':'due-soon'}">${esc(qtyLabel(f.remainingQty,f.unit)+' left')}</span>`)).join('');
+  const lowMed = state.medicineItems.filter(m=>m.reorderThreshold!=null && m.remainingQty<=m.reorderThreshold)
+    .map(m=> reportRow(null, m.name, 'Medicine', `<span class="le-due ${m.remainingQty<=0?'overdue':'due-soon'}">${esc(qtyLabel(m.remainingQty,m.unit)+' left')}</span>`)).join('');
+  return `
+    ${reportSection('Health due in this period', healthRows)}
+    ${reportSection('Food expiring in this period', foodExpRows)}
+    ${reportSection('Medicine expiring in this period', medExpRows)}
+    ${reportSection('Currently low or out of stock — Food', lowFood)}
+    ${reportSection('Currently low or out of stock — Medicine', lowMed)}
+  `;
+}
+function renderHealthReport(range){
+  const logs = state.healthLogs.filter(h=>h.date>=range.start && h.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
+  const rows = logs.map(h=>{
+    const dog = state.dogs.find(d=>d.id===h.dogId);
+    return reportRow(h.date, (dog?dog.name:'Unknown dog')+' — '+h.type, h.notes, null);
+  }).join('');
+  return `
+    <div class="sub" style="margin-bottom:10px;">${logs.length} record${logs.length===1?'':'s'} in this period</div>
+    ${rows || `<div class="empty-state">No health records in this period.</div>`}
+  `;
+}
+function renderTrainingReport(range){
+  const logs = state.trainingLogs.filter(t=>t.date>=range.start && t.date<=range.end).sort((a,b)=>a.date.localeCompare(b.date));
+  const counts = {Introduced:0,'In Progress':0,Mastered:0};
+  logs.forEach(t=>{ if(counts[t.level]!=null) counts[t.level]++; });
+  const rows = logs.map(t=>{
+    const dog = state.dogs.find(d=>d.id===t.dogId);
+    const sub = (t.trainer?'Trainer: '+t.trainer+(t.notes?' — ':''):'')+(t.notes||'');
+    const badge = `<span class="le-level ${t.level.toLowerCase().replace(' ','-')}">${esc(t.level)}</span>`;
+    return reportRow(t.date, (dog?dog.name:'Unknown dog')+' — '+t.program, sub, badge);
+  }).join('');
+  return `
+    <div class="sub" style="margin-bottom:10px;">${logs.length} session${logs.length===1?'':'s'} · ${counts.Introduced} introduced · ${counts['In Progress']} in progress · ${counts.Mastered} mastered</div>
+    ${rows || `<div class="empty-state">No training sessions in this period.</div>`}
+  `;
+}
+function renderStockReport(kind, range){
+  const names = kind==='food' ? uniqueFoodNames() : uniqueMedicineNames();
+  const logs = kind==='food' ? state.feedingLogs : state.medicationLogs;
+  const snapshotRows = names.map(name=>{
+    const total = kind==='food' ? foodTotalStock(name) : medicineTotalStock(name);
+    const unit = kind==='food' ? foodUnitFor(name) : medicineUnitFor(name);
+    const batchCount = (kind==='food' ? foodBatchesByName(name) : medicineBatchesByName(name)).length;
+    const badge = `<span class="le-due ok">${esc(qtyLabel(total,unit))}</span>`;
+    return reportRow(null, name, batchCount+' batch'+(batchCount===1?'':'es'), badge);
+  }).join('');
+  const usageInRange = logs.filter(l=> l.date>=range.start && l.date<=range.end);
+  const usageByName = {};
+  usageInRange.forEach(l=>{
+    const key = kind==='food' ? l.foodName : l.medicineName;
+    if(!key) return;
+    usageByName[key] = (usageByName[key]||0) + l.amount;
+  });
+  const usageRows = Object.keys(usageByName).map(name=>{
+    const unit = kind==='food' ? foodUnitFor(name) : medicineUnitFor(name);
+    const badge = `<span class="le-due ok">${esc(qtyLabel(round2(usageByName[name]),unit))}</span>`;
+    return reportRow(null, name, null, badge);
+  }).join('');
+  return `
+    ${reportSection('Current stock (collective)', snapshotRows)}
+    ${reportSection((kind==='food'?'Feeding':'Doses given')+' in this period', usageRows)}
+  `;
+}
+function renderHandlerReport(range){
+  if(state.handlers.length===0){
+    return `<div class="empty-state">No handlers added yet.</div>`;
+  }
+  let sorted = state.handlers.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(state.reportFilterHandler) sorted = sorted.filter(h=>h.id===state.reportFilterHandler);
+  if(sorted.length===0) return `<div class="empty-state">No matching handler.</div>`;
+  const typeOk = t => !state.reportFilterType || state.reportFilterType===t;
+  const sections = sorted.map(h=>{
+    const activities = [];
+    if(typeOk('health')) state.healthLogs.filter(l=>l.handlerId===h.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterDog || l.dogId===state.reportFilterDog)).forEach(l=>{
+      const dog = state.dogs.find(d=>d.id===l.dogId);
+      activities.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Health: '+l.type, sub:l.notes||null, badge:'<span class="le-type">Health</span>'});
+    });
+    if(typeOk('training')) state.trainingLogs.filter(l=>l.handlerId===h.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterDog || l.dogId===state.reportFilterDog)).forEach(l=>{
+      const dog = state.dogs.find(d=>d.id===l.dogId);
+      activities.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Training: '+l.program, sub:l.level||null, badge:'<span class="le-type">Training</span>'});
+    });
+    if(typeOk('feeding')) state.feedingLogs.filter(l=>l.handlerId===h.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterDog || l.dogId===state.reportFilterDog)).forEach(l=>{
+      const dog = state.dogs.find(d=>d.id===l.dogId);
+      activities.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Fed '+qtyLabel(l.amount, foodUnitFor(l.foodName))+' of '+esc(l.foodName||'—'), sub:l.notes||null, badge:'<span class="le-type">Feeding</span>'});
+    });
+    if(typeOk('medicine')) state.medicationLogs.filter(l=>l.handlerId===h.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterDog || l.dogId===state.reportFilterDog)).forEach(l=>{
+      const dog = state.dogs.find(d=>d.id===l.dogId);
+      activities.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Gave '+qtyLabel(l.amount, medicineUnitFor(l.medicineName))+' of '+esc(l.medicineName||'—'), sub:l.reason||l.notes||null, badge:'<span class="le-type">Medicine</span>'});
+    });
+    activities.sort((a,b)=>a.date.localeCompare(b.date));
+    const rows = activities.map(a=>reportRow(a.date, a.title, a.sub, a.badge)).join('');
+    const title = (h.rank?h.rank+' ':'')+h.name+' ('+activities.length+' activit'+(activities.length===1?'y':'ies')+')';
+    return reportSection(title, rows);
+  }).join('');
+  return sections;
+}
+function renderAllActivitiesReport(range){
+  const typeOk = t => !state.reportFilterType || state.reportFilterType===t;
+  const dogOk = id => !state.reportFilterDog || id===state.reportFilterDog;
+  const handlerOk = id => !state.reportFilterHandler || id===state.reportFilterHandler;
+  const conducted = [];
+  if(typeOk('health')) state.healthLogs.filter(l=>l.date>=range.start && l.date<=range.end && dogOk(l.dogId) && handlerOk(l.handlerId)).forEach(l=>{
+    const dog = state.dogs.find(d=>d.id===l.dogId);
+    conducted.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Health: '+l.type, sub:[l.notes, handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null].filter(Boolean).join(' — ')||null, badge:'<span class="le-type">Health</span>'});
+  });
+  if(typeOk('training')) state.trainingLogs.filter(l=>l.date>=range.start && l.date<=range.end && dogOk(l.dogId) && handlerOk(l.handlerId)).forEach(l=>{
+    const dog = state.dogs.find(d=>d.id===l.dogId);
+    conducted.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Training: '+l.program+' ('+l.level+')', sub:handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null, badge:'<span class="le-type">Training</span>'});
+  });
+  if(typeOk('feeding')) state.feedingLogs.filter(l=>l.date>=range.start && l.date<=range.end && dogOk(l.dogId) && handlerOk(l.handlerId)).forEach(l=>{
+    const dog = state.dogs.find(d=>d.id===l.dogId);
+    conducted.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Fed '+qtyLabel(l.amount, foodUnitFor(l.foodName))+' of '+esc(l.foodName||'—'), sub:handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null, badge:'<span class="le-type">Feeding</span>'});
+  });
+  if(typeOk('medicine')) state.medicationLogs.filter(l=>l.date>=range.start && l.date<=range.end && dogOk(l.dogId) && handlerOk(l.handlerId)).forEach(l=>{
+    const dog = state.dogs.find(d=>d.id===l.dogId);
+    conducted.push({date:l.date, title:(dog?dog.name:'Unknown dog')+' — Gave '+qtyLabel(l.amount, medicineUnitFor(l.medicineName))+' of '+esc(l.medicineName||'—'), sub:[l.reason, handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null].filter(Boolean).join(' — ')||null, badge:'<span class="le-type">Medicine</span>'});
+  });
+  conducted.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const scheduled = [];
+  if(typeOk('health')) state.healthLogs.filter(l=>l.nextDueDate && l.nextDueDate>=range.start && l.nextDueDate<=range.end && dogOk(l.dogId) && handlerOk(l.handlerId)).forEach(l=>{
+    const dog = state.dogs.find(d=>d.id===l.dogId);
+    const days = daysUntil(l.nextDueDate);
+    scheduled.push({date:l.nextDueDate, title:(dog?dog.name:'Unknown dog')+' — '+l.type+' due', sub:null, badge:`<span class="le-due ${dueStatusClass(days)}">${esc(dueLabel(days))}</span>`});
+  });
+  scheduled.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const conductedRows = conducted.map(a=>reportRow(a.date, a.title, a.sub, a.badge)).join('');
+  const scheduledRows = scheduled.map(a=>reportRow(a.date, a.title, a.sub, a.badge)).join('');
+  return `
+    ${reportSection('Conducted ('+conducted.length+')', conductedRows)}
+    ${reportSection('Scheduled / due in this period ('+scheduled.length+')', scheduledRows)}
+  `;
+}
+function renderDogActivityReport(range){
+  if(state.dogs.length===0){
+    return `<div class="empty-state">No dogs added yet.</div>`;
+  }
+  let sorted = state.dogs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(state.reportFilterDog) sorted = sorted.filter(d=>d.id===state.reportFilterDog);
+  if(sorted.length===0) return `<div class="empty-state">No matching dog.</div>`;
+  const typeOk = t => !state.reportFilterType || state.reportFilterType===t;
+  const sections = sorted.map(dog=>{
+    const activities = [];
+    if(typeOk('health')) state.healthLogs.filter(l=>l.dogId===dog.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterHandler || l.handlerId===state.reportFilterHandler)).forEach(l=>{
+      activities.push({date:l.date, title:'Health: '+l.type, sub:[l.notes, handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null].filter(Boolean).join(' — ')||null, badge:'<span class="le-type">Health</span>'});
+    });
+    if(typeOk('training')) state.trainingLogs.filter(l=>l.dogId===dog.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterHandler || l.handlerId===state.reportFilterHandler)).forEach(l=>{
+      activities.push({date:l.date, title:'Training: '+l.program+' ('+l.level+')', sub:handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null, badge:'<span class="le-type">Training</span>'});
+    });
+    if(typeOk('feeding')) state.feedingLogs.filter(l=>l.dogId===dog.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterHandler || l.handlerId===state.reportFilterHandler)).forEach(l=>{
+      activities.push({date:l.date, title:'Fed '+qtyLabel(l.amount, foodUnitFor(l.foodName))+' of '+esc(l.foodName||'—'), sub:handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null, badge:'<span class="le-type">Feeding</span>'});
+    });
+    if(typeOk('medicine')) state.medicationLogs.filter(l=>l.dogId===dog.id && l.date>=range.start && l.date<=range.end && (!state.reportFilterHandler || l.handlerId===state.reportFilterHandler)).forEach(l=>{
+      activities.push({date:l.date, title:'Gave '+qtyLabel(l.amount, medicineUnitFor(l.medicineName))+' of '+esc(l.medicineName||'—'), sub:[l.reason, handlerName(l.handlerId)?'by '+handlerName(l.handlerId):null].filter(Boolean).join(' — ')||null, badge:'<span class="le-type">Medicine</span>'});
+    });
+    activities.sort((a,b)=>a.date.localeCompare(b.date));
+    const rows = activities.map(a=>reportRow(a.date, a.title, a.sub, a.badge)).join('');
+    const title = dog.name+' ('+activities.length+' activit'+(activities.length===1?'y':'ies')+')';
+    return reportSection(title, rows);
+  }).join('');
+  return sections;
+}
+function renderReportView(){
+  const type = state.reportType;
+  const titles = {all:'All Activities', upcoming:'Upcoming &amp; Due', health:'Health Report', training:'Training Report', food:'Food Stock Report', medicine:'Medicine Stock Report', handlers:'Handler Report', dogs:'Dog Activity Report'};
+  const range = reportFrameRange();
+  let body = '';
+  if(type==='all') body = renderAllActivitiesReport(range);
+  else if(type==='upcoming') body = renderUpcomingReport(range);
+  else if(type==='health') body = renderHealthReport(range);
+  else if(type==='training') body = renderTrainingReport(range);
+  else if(type==='food') body = renderStockReport('food', range);
+  else if(type==='medicine') body = renderStockReport('medicine', range);
+  else if(type==='handlers') body = renderHandlerReport(range);
+  else if(type==='dogs') body = renderDogActivityReport(range);
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:4px;" class="no-print">${titles[type]||'Report'}</h1>
+    <div class="sub no-print" style="color:var(--ink-soft); font-size:12.5px; margin-bottom:14px;">${fmtDate(range.start)} – ${fmtDate(range.end)}</div>
+    <div class="no-print">${renderFrameSelector()}${(type==='dogs'||type==='handlers'||type==='all') ? renderReportFilters() : ''}</div>
+    <div id="print-area">
+      <div class="print-header">
+        ${appHeadingText() ? `<div style="font-size:11px; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:2px;">${esc(appHeadingText())}</div>` : ''}
+        <h1>Kennel Board</h1>
+        <h2>${titles[type]||'Report'}</h2>
+        <div class="print-meta">Period: ${fmtDate(range.start)} – ${fmtDate(range.end)}</div>
+        <div class="print-meta">Printed by: ${esc(roleLabelText())} &middot; <span id="print-timestamp"></span></div>
+      </div>
+      ${body}
+    </div>
+    <button class="btn secondary full no-print" style="margin-top:10px;" onclick="window.print()">Print / Save as PDF</button>
+  `;
+}
+
+/* ---------------- Render: dog detail ---------------- */
+function renderDogDetail(){
+  const dog = state.dogs.find(d=>d.id===state.selectedDogId);
+  if(!dog){ state.view='dashboard'; return renderDashboard(); }
+
+  let tabBody;
+  if(state.detailTab==='profile'){
+    tabBody = `
+      <div class="field-grid">
+        <div class="info-row"><span class="k">Breed</span><span class="v">${esc(dog.breed||'—')}</span></div>
+        <div class="info-row"><span class="k">Date of birth</span><span class="v">${dog.dob? fmtDate(dog.dob) : '—'}</span></div>
+        <div class="info-row"><span class="k">Age</span><span class="v">${esc(ageString(dog.dob))}</span></div>
+        <div class="info-row"><span class="k">Weight</span><span class="v">${dog.weight ? dog.weight + ' kg' : '—'}</span></div>
+        <div class="info-row"><span class="k">Sex</span><span class="v">${dog.sex==='M'?'Male':dog.sex==='F'?'Female':'—'}</span></div>
+        <div class="info-row"><span class="k">Role</span><span class="v">${esc(roleLabel(dog.role))}</span></div>
+        <div class="info-row"><span class="k">Microchip</span><span class="v mono">${esc(dog.microchip||'—')}</span></div>
+      </div>
+      ${dog.notes ? `<div class="notes-block">${esc(dog.notes)}</div>` : ''}
+    `;
+  } else if(state.detailTab==='health'){
+    const logs = dogHealthLogs(dog.id);
+    tabBody = `
+      <div class="section-actions">
+        ${canAdd() ? `<button class="btn" data-action="toggle-health-form">${state.showHealthForm?'Cancel':'+ Log health entry'}</button>` : ''}
+      </div>
+      ${state.showHealthForm ? renderHealthForm() : ''}
+      ${logs.length===0 ? `<div class="empty-state">No health records yet.</div>` :
+        logs.map(h=>{
+          const due = h.nextDueDate ? dueStatusClass(daysUntil(h.nextDueDate)) : null;
+          const handler = handlerName(h.handlerId);
+          return `
+          <div class="log-entry">
+            <div class="le-top">
+              <span class="le-date mono">${fmtDate(h.date)}</span>
+              ${canManage() ? `<button class="le-del" data-action="delete-health" data-id="${h.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+            </div>
+            <div style="margin-bottom:6px;"><span class="le-type">${esc(h.type)}</span></div>
+            ${h.notes ? `<div class="le-notes">${esc(h.notes)}</div>` : ''}
+            ${handler ? `<div class="le-notes" style="color:var(--ink-soft); font-size:12.5px;">Conducted by ${esc(handler)}</div>` : ''}
+            ${h.nextDueDate ? `<div class="le-due ${due}">Next due ${fmtDate(h.nextDueDate)} · ${esc(dueLabel(daysUntil(h.nextDueDate)))}</div>` : ''}
+          </div>`;
+        }).join('')
+      }
+    `;
+  } else if(state.detailTab==='training'){
+    const logs = dogTrainingLogs(dog.id);
+    tabBody = `
+      <div class="section-actions">
+        ${canAdd() ? `<button class="btn" data-action="toggle-training-form">${state.showTrainingForm?'Cancel':'+ Log training session'}</button>` : ''}
+      </div>
+      ${state.showTrainingForm ? renderTrainingForm() : ''}
+      ${logs.length===0 ? `<div class="empty-state">No training records yet.</div>` :
+        logs.map(t=>{
+          const handler = handlerName(t.handlerId);
+          return `
+          <div class="log-entry">
+            <div class="le-top">
+              <span class="le-date mono">${fmtDate(t.date)}</span>
+              ${canManage() ? `<button class="le-del" data-action="delete-training" data-id="${t.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+            </div>
+            <div style="margin-bottom:6px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <span class="le-type">${esc(t.program)}</span>
+              <span class="le-level ${t.level.toLowerCase().replace(' ','-')}">${esc(t.level)}</span>
+            </div>
+            ${handler ? `<div class="le-notes" style="color:var(--ink-soft); font-size:12.5px;">Handler: ${esc(handler)}</div>` : (t.trainer ? `<div class="le-notes" style="color:var(--ink-soft); font-size:12.5px;">Trainer: ${esc(t.trainer)}</div>` : '')}
+            ${t.notes ? `<div class="le-notes">${esc(t.notes)}</div>` : ''}
+          </div>`;
+        }).join('')
+      }
+    `;
+  } else if(state.detailTab==='feeding'){
+    tabBody = renderFeedingTabContent(dog);
+  } else {
+    tabBody = renderMedicineTabContent(dog);
+  }
+
+  return `
+    <div class="detail-head-v2">
+      <div class="avatar avatar-xl">${dog.photoDataUrl ? `<img src="${dog.photoDataUrl}" alt="" />` : esc((dog.name||'?').charAt(0).toUpperCase())}</div>
+      <div class="detail-head-info">
+        <div class="detail-title">
+          <h1>${esc(dog.name)}</h1>
+          <div class="sub">${esc(dog.breed||'Breed unknown')} · ${esc(roleLabel(dog.role))}</div>
+          ${dog.weight ? `<div class="sub" style="margin-top:2px;">${dog.weight} kg</div>` : ''}
+        </div>
+        <div class="detail-actions">
+          ${canManage() ? `<button class="icon-btn" data-action="edit-dog" data-id="${dog.id}" aria-label="Edit">${ICONS.edit}</button>
+          <button class="icon-btn danger" data-action="delete-dog" data-id="${dog.id}" aria-label="Delete">${ICONS.trash}</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn ${state.detailTab==='profile'?'active':''}" data-action="set-tab" data-tab="profile">${ICONS.person}<span>Profile</span></button>
+      <button class="tab-btn ${state.detailTab==='health'?'active':''}" data-action="set-tab" data-tab="health">${ICONS.heart}<span>Health</span></button>
+      <button class="tab-btn ${state.detailTab==='training'?'active':''}" data-action="set-tab" data-tab="training">${ICONS.target}<span>Training</span></button>
+      <button class="tab-btn ${state.detailTab==='feeding'?'active':''}" data-action="set-tab" data-tab="feeding">${ICONS.bowl}<span>Feeding</span></button>
+      <button class="tab-btn ${state.detailTab==='medicine'?'active':''}" data-action="set-tab" data-tab="medicine">${ICONS.pill}<span>Medicine</span></button>
+    </div>
+    ${tabBody}
+  `;
+}
+
+/* ---------------- Render: forms ---------------- */
+function renderDogForm(){
+  const editing = state.editingDogId ? state.dogs.find(d=>d.id===state.editingDogId) : null;
+  const d = editing || {name:'',breed:'',dob:'',weight:'',sex:'',role:'under_training',microchip:'',notes:''};
+  const existingRations = editing ? dogRations(editing) : [];
+  const rationRows = [0,1,2,3].map(i => existingRations[i] || {foodName:'', amount:''});
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:14px;">${editing?'Edit dog':'Add a dog'}</h1>
+    <form novalidate id="dog-form" class="form-card">
+      <div class="fld">
+        <label>Photo</label>
+        <div class="photo-picker">
+          <div class="photo-preview" id="dog-photo-preview">
+            ${state.dogFormPhoto ? `<img src="${state.dogFormPhoto}" alt="Dog photo" />` : `<span>${esc((d.name||'?').charAt(0).toUpperCase())}</span>`}
+          </div>
+          <div class="photo-actions" id="dog-photo-actions">
+            <label class="btn secondary" style="cursor:pointer; text-align:center;">Choose photo<input type="file" accept="image/*" id="dog-photo-input" style="display:none;" /></label>
+            <button type="button" class="btn ghost" id="dog-photo-remove-btn" data-action="remove-dog-photo" style="${state.dogFormPhoto?'':'display:none;'}">Remove</button>
+          </div>
+        </div>
+      </div>
+      <div class="fld"><label>Name <span class="req">*</span></label><input name="name" required value="${esc(d.name)}" placeholder="e.g. Luna" /></div>
+      <div class="fld"><label>Breed</label>
+        <select name="breed">
+          <option value="" ${!d.breed?'selected':''}>— Select breed —</option>
+          ${DOG_BREEDS.map(b=>`<option value="${b}" ${d.breed===b?'selected':''}>${b}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>Date of birth</label><input type="date" name="dob" value="${esc(d.dob)}" /></div>
+        <div class="fld"><label>Weight (kg)</label><input type="number" step="0.1" min="0" name="weight" value="${esc(d.weight||'')}" placeholder="e.g. 28.5" /></div>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>Sex</label>
+          <select name="sex">
+            <option value="" ${!d.sex?'selected':''}>—</option>
+            <option value="M" ${d.sex==='M'?'selected':''}>Male</option>
+            <option value="F" ${d.sex==='F'?'selected':''}>Female</option>
+          </select>
+        </div>
+        <div class="fld"><label>Role</label>
+          <select name="role">
+            ${ROLES.map(r=>`<option value="${r.v}" ${d.role===r.v?'selected':''}>${r.l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="fld"><label>Microchip / registration #</label><input name="microchip" value="${esc(d.microchip)}" class="mono" /></div>
+      <div class="fld">
+        <label>Daily feeding</label>
+        <div class="fld-hint" style="margin-top:-2px; margin-bottom:8px;">List every food this dog gets each day — leave a row blank if not needed.</div>
+        ${rationRows.map(r=>`
+          <div class="fld-row" style="margin-bottom:8px;">
+            <div class="fld" style="margin-bottom:0;"><select name="rationFoodName">
+              <option value="">— None —</option>
+              ${uniqueFoodNames().map(n=>`<option value="${esc(n)}" ${r.foodName===n?'selected':''}>${esc(n)}</option>`).join('')}
+            </select></div>
+            <div class="fld" style="margin-bottom:0;"><input type="number" step="0.01" min="0" name="rationAmount" value="${esc(r.amount)}" placeholder="Amount/day" /></div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Temperament, pedigree, special care...">${esc(d.notes)}</textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="cancel-form">Cancel</button>
+        <button type="submit" class="btn">${editing?'Save changes':'Add dog'}</button>
+      </div>
+      ${editing ? `<input type="hidden" name="recordId" value="${editing.id}" />` : ''}
+    </form>
+  `;
+}
+
+function renderHealthForm(){
+  return `
+    <form novalidate id="health-form" class="form-card">
+      <div class="fld-row">
+        <div class="fld"><label>Date <span class="req">*</span></label><input type="date" name="date" required value="${todayISO()}" /></div>
+        <div class="fld"><label>Type <span class="req">*</span></label>
+          <select name="type">${HEALTH_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Details, dosage, vet name, weight, etc."></textarea></div>
+      <div class="fld"><label>Conducted by (Handler) <span class="req">*</span></label>
+        <select name="handlerId" required>${handlerOptions(null)}</select>
+      </div>
+      <div class="fld"><label>Next due date (optional)</label><input type="date" name="nextDueDate" /></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="toggle-health-form">Cancel</button>
+        <button type="submit" class="btn">Save entry</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderTrainingForm(){
+  return `
+    <form novalidate id="training-form" class="form-card">
+      <div class="fld-row">
+        <div class="fld"><label>Date <span class="req">*</span></label><input type="date" name="date" required value="${todayISO()}" /></div>
+        <div class="fld"><label>Level <span class="req">*</span></label>
+          <select name="level">${TRAINING_LEVELS.map(l=>`<option value="${l}">${l}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="fld"><label>Program / skill <span class="req">*</span></label>
+        <input name="program" required list="program-suggestions" placeholder="e.g. Basic Obedience, Agility, Scent Work" />
+        <datalist id="program-suggestions">
+          <option value="Puppy Socialization"><option value="Basic Obedience">
+          <option value="Advanced Obedience"><option value="Agility">
+          <option value="Scent Work"><option value="Protection / Guard Work">
+          <option value="Service / Task Training">
+        </datalist>
+      </div>
+      <div class="fld"><label>Handler / Trainer <span class="req">*</span></label>
+        <select name="handlerId" required>${handlerOptions(null)}</select>
+      </div>
+      <div class="fld"><label>Notes</label><textarea name="notes" placeholder="What was covered, progress, issues..."></textarea></div>
+      <div class="form-actions">
+        <button type="button" class="btn ghost" data-action="toggle-training-form">Cancel</button>
+        <button type="submit" class="btn">Save entry</button>
+      </div>
+    </form>
+  `;
+}
+
+/* ---------------- Main render ---------------- */
+const WIDE_VIEWS = ['dashboard','foodInventory','medicineInventory','handlersInventory','reports'];
+function render(){
+  if(typeof document.title !== 'undefined'){ try{ document.title = (appHeadingText() ? appHeadingText() + ' · ' : '') + 'Kennel Board — Health & Training Tracker'; }catch(e){} }
+  const app = document.getElementById('app');
+  const sidebarEl = document.getElementById('sidebar');
+  const backdropEl = document.getElementById('sidebar-backdrop');
+  if(!state.authChecked){
+    app.className = '';
+    app.innerHTML = `<div class="loading">Checking sign-in…</div>`;
+    if(sidebarEl){ sidebarEl.innerHTML = ''; sidebarEl.classList.remove('open'); }
+    if(backdropEl) backdropEl.classList.remove('open');
+    return;
+  }
+  if(!state.authUser){
+    app.className = '';
+    app.innerHTML = renderLoginScreen();
+    if(sidebarEl){ sidebarEl.innerHTML = ''; sidebarEl.classList.remove('open'); }
+    if(backdropEl) backdropEl.classList.remove('open');
+    attachDynamicHandlers();
+    return;
+  }
+  if(state.loading){
+    app.className = '';
+    app.innerHTML = `<div class="loading">Loading kennel records…</div>`;
+    return;
+  }
+  if(!state.role){
+    app.className = '';
+    app.innerHTML = renderRolePicker();
+    if(sidebarEl){ sidebarEl.innerHTML = ''; sidebarEl.classList.remove('open'); }
+    if(backdropEl) backdropEl.classList.remove('open');
+    attachDynamicHandlers();
+    return;
+  }
+  app.className = WIDE_VIEWS.includes(state.view) ? 'app-wide' : '';
+  let body = renderTopbar();
+  if(state.view==='dashboard') body += renderDashboard();
+  else if(state.view==='foodInventory') body += renderFoodInventory();
+  else if(state.view==='medicineInventory') body += renderMedicineInventory();
+  else if(state.view==='handlersInventory') body += renderHandlersInventory();
+  else if(state.view==='reports') body += renderReportsHome();
+  else if(state.view==='reportView') body += renderReportView();
+  else if(state.view==='dogDetail') body += renderDogDetail();
+  else if(state.view==='dogForm') body += renderDogForm();
+  else if(state.view==='foodForm') body += renderFoodForm();
+  else if(state.view==='medicineForm') body += renderMedicineForm();
+  else if(state.view==='handlerForm') body += renderHandlerForm();
+  else if(state.view==='settings') body += renderSettings();
+  else if(state.view==='contact') body += renderContactPage();
+  app.innerHTML = body;
+  if(sidebarEl){
+    sidebarEl.innerHTML = renderSidebar();
+    sidebarEl.classList.toggle('open', !!state.sidebarOpen);
+  }
+  if(backdropEl) backdropEl.classList.toggle('open', !!state.sidebarOpen);
+  attachDynamicHandlers();
+}
+
+function attachDynamicHandlers(){
+  const search = document.getElementById('search-input');
+  if(search){
+    search.addEventListener('input', (e)=>{
+      state.search = e.target.value;
+      const list = document.getElementById('roster-list');
+      if(list) list.innerHTML = renderRosterCards(filteredDogs());
+    });
+  }
+  const rs = document.getElementById('report-start');
+  const re = document.getElementById('report-end');
+  if(rs) rs.addEventListener('change', e=>{ state.reportStart = e.target.value; render(); });
+  if(re) re.addEventListener('change', e=>{ state.reportEnd = e.target.value; render(); });
+  const rfDog = document.getElementById('report-filter-dog');
+  const rfHandler = document.getElementById('report-filter-handler');
+  const rfType = document.getElementById('report-filter-type');
+  if(rfDog) rfDog.addEventListener('change', e=>{ state.reportFilterDog = e.target.value; render(); });
+  if(rfHandler) rfHandler.addEventListener('change', e=>{ state.reportFilterHandler = e.target.value; render(); });
+  if(rfType) rfType.addEventListener('change', e=>{ state.reportFilterType = e.target.value; render(); });
+  const photoInput = document.getElementById('dog-photo-input');
+  if(photoInput){
+    photoInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        const dataUrl = await resizeImageFile(file, 280, 0.72);
+        state.dogFormPhoto = dataUrl;
+        const preview = document.getElementById('dog-photo-preview');
+        if(preview) preview.innerHTML = `<img src="${dataUrl}" alt="Dog photo" />`;
+        const removeBtn = document.getElementById('dog-photo-remove-btn');
+        if(removeBtn) removeBtn.style.display = '';
+      }catch(err){
+        console.error('Photo processing failed', err);
+        alert('Could not process that photo. Please try a different image.');
+      }
+    });
+  }
+  const handlerPhotoInput = document.getElementById('handler-photo-input');
+  if(handlerPhotoInput){
+    handlerPhotoInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        const dataUrl = await resizeImageFile(file, 280, 0.72);
+        state.handlerFormPhoto = dataUrl;
+        const preview = document.getElementById('handler-photo-preview');
+        if(preview) preview.innerHTML = `<img src="${dataUrl}" alt="Handler photo" />`;
+        const removeBtn = document.getElementById('handler-photo-remove-btn');
+        if(removeBtn) removeBtn.style.display = '';
+      }catch(err){
+        console.error('Photo processing failed', err);
+        alert('Could not process that photo. Please try a different image.');
+      }
+    });
+  }
+  const logoInput = document.getElementById('logo-input');
+  if(logoInput){
+    logoInput.addEventListener('change', async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      try{
+        const isPng = file.type === 'image/png';
+        const dataUrl = await resizeImageFile(file, 160, 0.85, isPng ? 'image/png' : 'image/jpeg');
+        state.settings.logoDataUrl = dataUrl;
+        saveSettings();
+        const preview = document.getElementById('logo-preview');
+        if(preview){
+          preview.classList.add('logo-checker');
+          preview.style.background = '';
+          preview.style.color = '';
+          preview.innerHTML = `<img src="${dataUrl}" alt="Logo" style="object-fit:contain;" />`;
+        }
+        const removeBtn = document.getElementById('logo-remove-btn');
+        if(removeBtn) removeBtn.style.display = '';
+      }catch(err){
+        console.error('Logo processing failed', err);
+        alert('Could not process that image. Please try a different file.');
+      }
+    });
+  }
+  const logoScaleFields = [['logo-scale-topbar','logoScaleTopbar'],['logo-scale-sidebar','logoScaleSidebar'],['logo-scale-rolepicker','logoScaleRolePicker']];
+  logoScaleFields.forEach(([elId, settingKey])=>{
+    const el = document.getElementById(elId);
+    if(el){
+      el.addEventListener('change', e=>{
+        const v = parseFloat(e.target.value);
+        state.settings[settingKey] = (v && v>0) ? v : 100;
+        saveSettings();
+        render();
+      });
+    }
+  });
+  const importInput = document.getElementById('import-backup-input');
+  if(importInput){
+    importInput.addEventListener('change', (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      importBackupFile(file);
+      e.target.value = '';
+    });
+  }
+}
+
+/* ---------------- Backup / Restore ---------------- */
+function exportBackup(){
+  const payload = {
+    app:'Kennel Board',
+    version:1,
+    exportedAt:new Date().toISOString(),
+    data:{
+      dogs: state.dogs,
+      healthLogs: state.healthLogs,
+      trainingLogs: state.trainingLogs,
+      foodItems: state.foodItems,
+      feedingLogs: state.feedingLogs,
+      medicineItems: state.medicineItems,
+      medicationLogs: state.medicationLogs,
+      handlers: state.handlers,
+      settings: state.settings
+    }
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'kennel-board-backup-' + todayISO() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importBackupFile(file){
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let parsed;
+    try{
+      parsed = JSON.parse(reader.result);
+    }catch(e){
+      alert('That file is not a valid backup (could not read it as JSON).');
+      return;
+    }
+    const data = parsed && parsed.data;
+    if(!data || !Array.isArray(data.dogs)){
+      alert('That file does not look like a Kennel Board backup.');
+      return;
+    }
+    if(!confirm('This will replace ALL current records with the contents of this backup. This cannot be undone. Continue?')) return;
+    state.dogs = data.dogs || [];
+    state.healthLogs = data.healthLogs || [];
+    state.trainingLogs = data.trainingLogs || [];
+    state.foodItems = data.foodItems || [];
+    state.feedingLogs = data.feedingLogs || [];
+    state.medicineItems = data.medicineItems || [];
+    state.medicationLogs = data.medicationLogs || [];
+    state.handlers = data.handlers || [];
+    state.settings = data.settings || state.settings;
+    await Promise.all([saveDogs(), saveHealthLogs(), saveTrainingLogs(), saveFoodItems(), saveFeedingLogs(), saveMedicineItems(), saveMedicationLogs(), saveHandlers(), saveSettings()]);
+    state.view = 'dashboard';
+    render();
+    alert('Backup restored.');
+  };
+  reader.onerror = () => alert('Could not read that file.');
+  reader.readAsText(file);
+}
+function deleteDog(id){
+  state.dogs = state.dogs.filter(d=>d.id!==id);
+  state.healthLogs = state.healthLogs.filter(h=>h.dogId!==id);
+  state.trainingLogs = state.trainingLogs.filter(t=>t.dogId!==id);
+  state.feedingLogs = state.feedingLogs.filter(f=>f.dogId!==id);
+  state.medicationLogs = state.medicationLogs.filter(m=>m.dogId!==id);
+  saveDogs(); saveHealthLogs(); saveTrainingLogs(); saveFeedingLogs(); saveMedicationLogs();
+  if(state.selectedDogId===id){ state.view='dashboard'; state.selectedDogId=null; }
+  render();
+}
+function deleteHealthEntry(id){
+  state.healthLogs = state.healthLogs.filter(h=>h.id!==id);
+  saveHealthLogs();
+  render();
+}
+function deleteTrainingEntry(id){
+  state.trainingLogs = state.trainingLogs.filter(t=>t.id!==id);
+  saveTrainingLogs();
+  render();
+}
+function deleteHandler(id){
+  state.handlers = state.handlers.filter(h=>h.id!==id);
+  saveHandlers();
+  render();
+}
+function handleHandlerFormSubmit(form){
+  try{
+    const fd = new FormData(form);
+    const id = fd.get('recordId');
+    const payload = {
+      id: id || uid(),
+      rank: (fd.get('rank')||'').trim(),
+      name: (fd.get('name')||'').trim() || 'Unnamed',
+      svcNo: (fd.get('svcNo')||'').trim(),
+      role: (fd.get('role')||'').trim(),
+      deploymentDate: fd.get('deploymentDate') || '',
+      photoDataUrl: state.handlerFormPhoto || null,
+      notes: (fd.get('notes')||'').trim(),
+      createdAt: id ? (state.handlers.find(h=>h.id===id)||{}).createdAt || todayISO() : todayISO()
+    };
+    if(id){
+      state.handlers = state.handlers.map(h=> h.id===id ? payload : h);
+    }else{
+      state.handlers.push(payload);
+    }
+    saveHandlers();
+    state.view = 'handlersInventory';
+    state.editingHandlerId = null;
+    state.handlerFormPhoto = null;
+    render();
+  }catch(err){
+    console.error('Saving handler failed:', err);
+    alert('Could not save this handler: ' + (err && err.message ? err.message : err));
+  }
+}
+
+function deleteFoodItem(id){
+  const item = foodItemById(id);
+  const name = item ? item.name : null;
+  state.foodItems = state.foodItems.filter(f=>f.id!==id);
+  if(name && !state.foodItems.some(f=>f.name===name)){
+    // no batches of this food remain at all — drop any dog rations pointing to it
+    state.dogs.forEach(d=>{
+      if(d.rations) d.rations = d.rations.filter(r=>r.foodName!==name);
+    });
+    saveDogs();
+  }
+  saveFoodItems();
+  if(state.expandedFoodId===id) state.expandedFoodId=null;
+  render();
+}
+function deleteMedicineItem(id){
+  state.medicineItems = state.medicineItems.filter(m=>m.id!==id);
+  saveMedicineItems();
+  if(state.expandedMedicineId===id) state.expandedMedicineId=null;
+  render();
+}
+function quickLogRations(dogId, handlerId){
+  const dog = state.dogs.find(d=>d.id===dogId);
+  if(!dog) return;
+  if(!handlerId){ alert('Please select the handler doing the feeding.'); return; }
+  const rations = dogRations(dog);
+  if(rations.length===0) return;
+  const date = todayISO();
+  const logged = [];
+  const skipped = [];
+  rations.forEach(r=>{
+    const available = foodTotalStock(r.foodName, date);
+    if(available <= 0 && !state.foodItems.some(f=>f.name===r.foodName)){
+      skipped.push(r.foodName + ' (no longer in stock records)');
+      return;
+    }
+    if(r.amount > available){
+      skipped.push(r.foodName + ' (needs ' + qtyLabel(r.amount, foodUnitFor(r.foodName)) + ', only ' + qtyLabel(available, foodUnitFor(r.foodName)) + ' left)');
+      return;
+    }
+    state.feedingLogs.push({ id:uid(), dogId, date, foodName:r.foodName, amount:r.amount, handlerId, notes:"Logged from daily ration" });
+    deductFoodStock(r.foodName, r.amount, date);
+    logged.push(r.foodName);
+  });
+  saveFeedingLogs(); saveFoodItems();
+  state.showQuickRationForm = false;
+  render();
+  if(skipped.length){
+    alert((logged.length ? 'Logged: ' + logged.join(', ') + '.\n\n' : 'Nothing was logged.\n\n') + 'Skipped due to insufficient stock: ' + skipped.join('; ') + '.');
+  }
+}
+function deleteFeedingEntry(id){
+  const entry = state.feedingLogs.find(f=>f.id===id);
+  if(entry && entry.foodName){
+    restoreFoodStock(entry.foodName, entry.amount, entry.date);
+    saveFoodItems();
+  }
+  state.feedingLogs = state.feedingLogs.filter(f=>f.id!==id);
+  saveFeedingLogs();
+  render();
+}
+function deleteMedicationEntry(id){
+  const entry = state.medicationLogs.find(m=>m.id===id);
+  if(entry && entry.medicineName){
+    restoreMedicineStock(entry.medicineName, entry.amount, entry.date);
+    saveMedicineItems();
+  }
+  state.medicationLogs = state.medicationLogs.filter(m=>m.id!==id);
+  saveMedicationLogs();
+  render();
+}
+
+function handleDogFormSubmit(form){
+  try{
+    const fd = new FormData(form);
+    const id = fd.get('recordId');
+    const foodNames = fd.getAll('rationFoodName');
+    const amounts = fd.getAll('rationAmount');
+    const rations = [];
+    for(let i=0;i<foodNames.length;i++){
+      const fname = foodNames[i];
+      const amt = parseFloat(amounts[i]);
+      if(fname && amt>0) rations.push({foodName:fname, amount:amt});
+    }
+    const payload = {
+      id: id || uid(),
+      name: (fd.get('name')||'').trim() || 'Unnamed',
+      breed: (fd.get('breed')||'').trim(),
+      dob: fd.get('dob')||'',
+      weight: fd.get('weight') ? parseFloat(fd.get('weight')) : null,
+      sex: fd.get('sex')||'',
+      role: fd.get('role')||'under_training',
+      microchip: (fd.get('microchip')||'').trim(),
+      rations: rations,
+      photoDataUrl: state.dogFormPhoto || null,
+      notes: (fd.get('notes')||'').trim(),
+      createdAt: id ? (state.dogs.find(d=>d.id===id)||{}).createdAt || todayISO() : todayISO()
+    };
+    if(id){
+      state.dogs = state.dogs.map(d=> d.id===id ? payload : d);
+    }else{
+      state.dogs.push(payload);
+    }
+    saveDogs();
+    state.view='dogDetail';
+    state.selectedDogId = payload.id;
+    state.editingDogId = null;
+    state.dogFormPhoto = null;
+    state.detailTab='profile';
+    render();
+  }catch(err){
+    console.error('Saving dog failed:', err);
+    alert('Could not save this dog\'s details: ' + (err && err.message ? err.message : err) + '\n\nNothing was changed. Please try again or let me know this exact message.');
+  }
+}
+
+function handleHealthFormSubmit(form){
+  const fd = new FormData(form);
+  const handlerId = fd.get('handlerId') || '';
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first — a handler must be selected to log this activity.'); }
+    else{ alert('Please select the handler who conducted this activity.'); }
+    return;
+  }
+  const entry = {
+    id: uid(),
+    dogId: state.selectedDogId,
+    date: fd.get('date') || todayISO(),
+    type: fd.get('type') || 'Other',
+    notes: (fd.get('notes')||'').trim(),
+    handlerId,
+    nextDueDate: fd.get('nextDueDate') || null
+  };
+  state.healthLogs.push(entry);
+  saveHealthLogs();
+  state.showHealthForm = false;
+  render();
+}
+
+function handleTrainingFormSubmit(form){
+  const fd = new FormData(form);
+  const handlerId = fd.get('handlerId') || '';
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first — a handler must be selected to log this activity.'); }
+    else{ alert('Please select the handler who conducted this training session.'); }
+    return;
+  }
+  const entry = {
+    id: uid(),
+    dogId: state.selectedDogId,
+    date: fd.get('date') || todayISO(),
+    program: (fd.get('program')||'').trim() || 'General',
+    level: fd.get('level') || 'Introduced',
+    handlerId,
+    notes: (fd.get('notes')||'').trim()
+  };
+  state.trainingLogs.push(entry);
+  saveTrainingLogs();
+  state.showTrainingForm = false;
+  render();
+}
+
+function handleFoodFormSubmit(form){
+  const fd = new FormData(form);
+  const id = fd.get('recordId');
+  if(id){
+    const item = state.foodItems.find(f=>f.id===id);
+    if(item){
+      item.name = (fd.get('name')||'').trim() || item.name;
+      item.type = fd.get('type') || item.type;
+      item.unit = fd.get('unit') || item.unit;
+      item.purchaseDate = fd.get('purchaseDate') || item.purchaseDate;
+      item.expiryDate = fd.get('expiryDate') || '';
+      const thr = fd.get('reorderThreshold');
+      item.reorderThreshold = thr ? parseFloat(thr) : null;
+      item.storageLocation = (fd.get('storageLocation')||'').trim();
+      item.notes = (fd.get('notes')||'').trim();
+    }
+  }else{
+    const qty = parseFloat(fd.get('purchaseQty')) || 0;
+    const thr = fd.get('reorderThreshold');
+    const name = (fd.get('name')||'').trim() || 'Unnamed food';
+    const unit = fd.get('unit') || FOOD_UNITS[0];
+    const purchaseDate = fd.get('purchaseDate') || todayISO();
+    state.foodItems.push({
+      id: uid(),
+      name,
+      type: fd.get('type') || FOOD_TYPES[0],
+      unit,
+      purchaseQty: qty,
+      remainingQty: qty,
+      purchaseDate,
+      expiryDate: fd.get('expiryDate') || '',
+      reorderThreshold: thr ? parseFloat(thr) : null,
+      storageLocation: (fd.get('storageLocation')||'').trim(),
+      notes: (fd.get('notes')||'').trim(),
+      createdAt: todayISO()
+    });
+  }
+  saveFoodItems();
+  state.view = 'foodInventory';
+  state.editingFoodId = null;
+  render();
+}
+
+function handleRestockSubmit(form){
+  const itemId = form.dataset.id;
+  const item = foodItemById(itemId);
+  if(!item) return;
+  const fd = new FormData(form);
+  const amount = parseFloat(fd.get('amount')) || 0;
+  if(amount<=0){ alert('Enter an amount greater than zero.'); return; }
+  const date = fd.get('date') || todayISO();
+  const newBatch = {
+    id: uid(),
+    name: item.name,
+    type: item.type,
+    unit: item.unit,
+    remainingQty: amount,
+    purchaseDate: date,
+    expiryDate: fd.get('expiryDate') || '',
+    reorderThreshold: item.reorderThreshold,
+    storageLocation: item.storageLocation,
+    notes: 'Restock',
+    createdAt: todayISO()
+  };
+  state.foodItems.push(newBatch);
+  saveFoodItems();
+  state.showRestockFormFor = null;
+  render();
+}
+
+function handleFeedingFormSubmit(form){
+  const fd = new FormData(form);
+  const foodName = fd.get('foodName') || '';
+  const amount = parseFloat(fd.get('amount')) || 0;
+  const date = fd.get('date') || todayISO();
+  const handlerId = fd.get('handlerId') || '';
+  if(!foodName){ alert('Please select a food item.'); return; }
+  if(amount<=0){ alert('Enter an amount greater than zero.'); return; }
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first — a handler must be selected to log this activity.'); }
+    else{ alert('Please select the handler who fed the dog.'); }
+    return;
+  }
+  const earliestBatch = foodBatchesByName(foodName)[0];
+  if(earliestBatch && earliestBatch.purchaseDate && date < earliestBatch.purchaseDate){
+    alert('This date (' + fmtDate(date) + ') is before ' + foodName + ' was first stocked (' + fmtDate(earliestBatch.purchaseDate) + '). Please check the date.');
+    return;
+  }
+  const available = foodTotalStock(foodName, date);
+  if(amount > available){
+    alert('Only ' + qtyLabel(available, foodUnitFor(foodName)) + ' of ' + foodName + ' was in stock as of ' + fmtDate(date) + ' — cannot log ' + qtyLabel(amount, foodUnitFor(foodName)) + '.');
+    return;
+  }
+  const entry = {
+    id: uid(),
+    dogId: state.selectedDogId,
+    date,
+    foodName,
+    amount,
+    handlerId,
+    notes: (fd.get('notes')||'').trim()
+  };
+  state.feedingLogs.push(entry);
+  deductFoodStock(foodName, amount, date);
+  saveFoodItems();
+  saveFeedingLogs();
+  state.showFeedingForm = false;
+  render();
+}
+
+function handleMedicineFormSubmit(form){
+  const fd = new FormData(form);
+  const id = fd.get('recordId');
+  if(id){
+    const item = state.medicineItems.find(m=>m.id===id);
+    if(item){
+      item.name = (fd.get('name')||'').trim() || item.name;
+      item.type = fd.get('type') || item.type;
+      item.unit = fd.get('unit') || item.unit;
+      item.purchaseDate = fd.get('purchaseDate') || item.purchaseDate;
+      item.expiryDate = fd.get('expiryDate') || '';
+      const thr = fd.get('reorderThreshold');
+      item.reorderThreshold = thr ? parseFloat(thr) : null;
+      item.storageLocation = (fd.get('storageLocation')||'').trim();
+      item.notes = (fd.get('notes')||'').trim();
+    }
+  }else{
+    const qty = parseFloat(fd.get('purchaseQty')) || 0;
+    const thr = fd.get('reorderThreshold');
+    const name = (fd.get('name')||'').trim() || 'Unnamed medicine';
+    const unit = fd.get('unit') || MEDICINE_UNITS[0];
+    const purchaseDate = fd.get('purchaseDate') || todayISO();
+    state.medicineItems.push({
+      id: uid(),
+      name,
+      type: fd.get('type') || MEDICINE_TYPES[0],
+      unit,
+      purchaseQty: qty,
+      remainingQty: qty,
+      purchaseDate,
+      expiryDate: fd.get('expiryDate') || '',
+      reorderThreshold: thr ? parseFloat(thr) : null,
+      storageLocation: (fd.get('storageLocation')||'').trim(),
+      notes: (fd.get('notes')||'').trim(),
+      createdAt: todayISO()
+    });
+  }
+  saveMedicineItems();
+  state.view = 'medicineInventory';
+  state.editingMedicineId = null;
+  render();
+}
+
+function handleMedRestockSubmit(form){
+  const itemId = form.dataset.id;
+  const item = medicineItemById(itemId);
+  if(!item) return;
+  const fd = new FormData(form);
+  const amount = parseFloat(fd.get('amount')) || 0;
+  if(amount<=0){ alert('Enter an amount greater than zero.'); return; }
+  const date = fd.get('date') || todayISO();
+  const newBatch = {
+    id: uid(),
+    name: item.name,
+    type: item.type,
+    unit: item.unit,
+    remainingQty: amount,
+    purchaseDate: date,
+    expiryDate: fd.get('expiryDate') || '',
+    reorderThreshold: item.reorderThreshold,
+    storageLocation: item.storageLocation,
+    notes: 'Restock',
+    createdAt: todayISO()
+  };
+  state.medicineItems.push(newBatch);
+  saveMedicineItems();
+  state.showMedRestockFormFor = null;
+  render();
+}
+
+function handleMedicationFormSubmit(form){
+  const fd = new FormData(form);
+  const medicineName = fd.get('medicineName') || '';
+  const amount = parseFloat(fd.get('amount')) || 0;
+  const date = fd.get('date') || todayISO();
+  const handlerId = fd.get('handlerId') || '';
+  if(!medicineName){ alert('Please select a medicine item.'); return; }
+  if(amount<=0){ alert('Enter an amount greater than zero.'); return; }
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first — a handler must be selected to log this activity.'); }
+    else{ alert('Please select the handler who administered this.'); }
+    return;
+  }
+  const earliestBatch = medicineBatchesByName(medicineName)[0];
+  if(earliestBatch && earliestBatch.purchaseDate && date < earliestBatch.purchaseDate){
+    alert('This date (' + fmtDate(date) + ') is before ' + medicineName + ' was first stocked (' + fmtDate(earliestBatch.purchaseDate) + '). Please check the date.');
+    return;
+  }
+  const available = medicineTotalStock(medicineName, date);
+  if(amount > available){
+    alert('Only ' + qtyLabel(available, medicineUnitFor(medicineName)) + ' of ' + medicineName + ' was in stock as of ' + fmtDate(date) + ' — cannot log ' + qtyLabel(amount, medicineUnitFor(medicineName)) + '.');
+    return;
+  }
+  const entry = {
+    id: uid(),
+    dogId: state.selectedDogId,
+    date,
+    medicineName,
+    amount,
+    handlerId,
+    reason: (fd.get('reason')||'').trim(),
+    notes: (fd.get('notes')||'').trim()
+  };
+  state.medicationLogs.push(entry);
+  deductMedicineStock(medicineName, amount, date);
+  saveMedicineItems();
+  saveMedicationLogs();
+  state.showMedicationForm = false;
+  render();
+}
+
+/* ---------------- Global event delegation ---------------- */
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-action]');
+  if(!el){
+    if(e.target.id==='sidebar-backdrop'){ state.sidebarOpen=false; render(); }
+    return;
+  }
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  const NAV_ACTIONS = ['go-dashboard','go-food','go-medicine','go-handlers','go-reports','open-settings','go-contact','switch-role'];
+  if(NAV_ACTIONS.includes(action)) state.sidebarOpen = false;
+  try{
+  if(action==='toggle-sidebar'){ state.sidebarOpen = !state.sidebarOpen; render(); }
+  else if(action==='go-dashboard'){ state.view='dashboard'; state.selectedDogId=null; render(); }
+  else if(action==='go-food'){ state.view='foodInventory'; render(); }
+  else if(action==='go-add-dog'){ state.view='dogForm'; state.editingDogId=null; state.dogFormPhoto=null; render(); }
+  else if(action==='go-add-food'){ state.view='foodForm'; state.editingFoodId=null; render(); }
+  else if(action==='view-dog'){ state.view='dogDetail'; state.selectedDogId=id; state.detailTab='profile'; state.showHealthForm=false; state.showTrainingForm=false; state.showFeedingForm=false; render(); }
+  else if(action==='edit-dog'){
+    state.view='dogForm'; state.editingDogId=id;
+    const editDog = state.dogs.find(x=>x.id===id);
+    state.dogFormPhoto = editDog ? (editDog.photoDataUrl||null) : null;
+    render();
+  }
+  else if(action==='remove-dog-photo'){
+    state.dogFormPhoto = null;
+    const preview = document.getElementById('dog-photo-preview');
+    const nameVal = (document.querySelector('#dog-form [name="name"]')||{}).value || '';
+    if(preview) preview.innerHTML = `<span>${esc(nameVal.charAt(0).toUpperCase() || '?')}</span>`;
+    const removeBtn = document.getElementById('dog-photo-remove-btn');
+    if(removeBtn) removeBtn.style.display = 'none';
+  }
+  else if(action==='edit-food'){ state.view='foodForm'; state.editingFoodId=id; render(); }
+  else if(action==='delete-dog'){ if(confirm('Delete this dog and all of its health, training, and feeding records? This cannot be undone.')) deleteDog(id); }
+  else if(action==='delete-food'){ if(confirm('Delete this food item? Feeding history that used it will remain but will show as removed.')) deleteFoodItem(id); }
+  else if(action==='set-tab'){ state.detailTab = el.dataset.tab; state.showHealthForm=false; state.showTrainingForm=false; state.showFeedingForm=false; state.showQuickRationForm=false; render(); }
+  else if(action==='toggle-health-form'){ state.showHealthForm = !state.showHealthForm; render(); }
+  else if(action==='toggle-training-form'){ state.showTrainingForm = !state.showTrainingForm; render(); }
+  else if(action==='toggle-feeding-form'){
+    if(state.foodItems.length===0 && !state.showFeedingForm){ alert('Add a food item in Food Stock first.'); return; }
+    state.showFeedingForm = !state.showFeedingForm; render();
+  }
+  else if(action==='toggle-quick-ration-form'){ state.showQuickRationForm = !state.showQuickRationForm; render(); }
+  else if(action==='toggle-food'){ state.expandedFoodId = state.expandedFoodId===id ? null : id; state.showRestockFormFor=null; render(); }
+  else if(action==='toggle-restock'){ state.showRestockFormFor = state.showRestockFormFor===id ? null : id; render(); }
+  else if(action==='delete-health'){ if(confirm('Delete this health record?')) deleteHealthEntry(id); }
+  else if(action==='delete-training'){ if(confirm('Delete this training record?')) deleteTrainingEntry(id); }
+  else if(action==='delete-feeding'){ if(confirm('Delete this feeding record? The amount will be added back to stock.')) deleteFeedingEntry(id); }
+  else if(action==='cancel-form'){ state.view = state.selectedDogId ? 'dogDetail' : 'dashboard'; state.editingDogId=null; state.dogFormPhoto=null; render(); }
+  else if(action==='cancel-food-form'){ state.view='foodInventory'; state.editingFoodId=null; render(); }
+  else if(action==='choose-role'){
+    const role = el.dataset.role;
+    const requiredPin = state.settings.pins ? state.settings.pins[role] : null;
+    if(requiredPin){
+      state.pendingRole=role; state.pinError=null; render();
+    }else{
+      state.role=role; state.pendingRole=null; state.pinError=null; state.view='dashboard'; render();
+    }
+  }
+  else if(action==='cancel-pin'){ state.pendingRole=null; state.pinError=null; render(); }
+  else if(action==='switch-role'){ state.role=null; state.pendingRole=null; state.view='dashboard'; state.selectedDogId=null; render(); }
+  else if(action==='sign-out'){
+    if(confirm('Sign out of Kennel Board?')){
+      if(window.fbSignOut){ window.fbSignOut().catch(err=>console.error('Sign out failed', err)); }
+    }
+  }
+  else if(action==='open-settings'){ state.view='settings'; render(); }
+  else if(action==='go-contact'){ state.view='contact'; render(); }
+  else if(action==='close-settings'){ state.view='dashboard'; render(); }
+  else if(action==='remove-logo'){
+    state.settings.logoDataUrl = null;
+    saveSettings();
+    const preview = document.getElementById('logo-preview');
+    if(preview){
+      preview.classList.remove('logo-checker');
+      preview.style.background = 'var(--spruce)';
+      preview.style.color = 'var(--brass-light)';
+      preview.innerHTML = ICONS.tag;
+    }
+    const removeBtn = document.getElementById('logo-remove-btn');
+    if(removeBtn) removeBtn.style.display = 'none';
+  }
+  else if(action==='export-backup'){ exportBackup(); }
+  else if(action==='go-medicine'){ state.view='medicineInventory'; render(); }
+  else if(action==='go-reports'){ state.view='reports'; render(); }
+  else if(action==='go-add-medicine'){ state.view='medicineForm'; state.editingMedicineId=null; render(); }
+  else if(action==='edit-medicine'){ state.view='medicineForm'; state.editingMedicineId=id; render(); }
+  else if(action==='delete-medicine'){ if(confirm('Delete this medicine item? Administration history that used it will remain but will show as removed.')) deleteMedicineItem(id); }
+  else if(action==='toggle-medicine'){ state.expandedMedicineId = state.expandedMedicineId===id ? null : id; state.showMedRestockFormFor=null; render(); }
+  else if(action==='toggle-med-restock'){ state.showMedRestockFormFor = state.showMedRestockFormFor===id ? null : id; render(); }
+  else if(action==='delete-medication'){ if(confirm('Delete this medication record? The amount will be added back to stock.')) deleteMedicationEntry(id); }
+  else if(action==='toggle-medication-form'){
+    if(state.medicineItems.length===0 && !state.showMedicationForm){ alert('Add a medicine item in Medicine Stock first.'); return; }
+    state.showMedicationForm = !state.showMedicationForm; render();
+  }
+  else if(action==='cancel-medicine-form'){ state.view='medicineInventory'; state.editingMedicineId=null; render(); }
+  else if(action==='go-handlers'){ state.view='handlersInventory'; render(); }
+  else if(action==='go-add-handler'){ state.view='handlerForm'; state.editingHandlerId=null; state.handlerFormPhoto=null; render(); }
+  else if(action==='edit-handler'){
+    state.view='handlerForm'; state.editingHandlerId=id;
+    const editHandler = state.handlers.find(x=>x.id===id);
+    state.handlerFormPhoto = editHandler ? (editHandler.photoDataUrl||null) : null;
+    render();
+  }
+  else if(action==='remove-handler-photo'){
+    state.handlerFormPhoto = null;
+    const preview = document.getElementById('handler-photo-preview');
+    const nameVal = (document.querySelector('#handler-form [name="name"]')||{}).value || '';
+    if(preview) preview.innerHTML = `<span>${esc(nameVal.charAt(0).toUpperCase() || '?')}</span>`;
+    const removeBtn = document.getElementById('handler-photo-remove-btn');
+    if(removeBtn) removeBtn.style.display = 'none';
+  }
+  else if(action==='delete-handler'){ if(confirm('Delete this handler record?')) deleteHandler(id); }
+  else if(action==='cancel-handler-form'){ state.view='handlersInventory'; state.editingHandlerId=null; state.handlerFormPhoto=null; render(); }
+  else if(action==='open-report'){ state.reportType = id; state.view='reportView'; state.reportFilterDog=''; state.reportFilterHandler=''; state.reportFilterType=''; render(); }
+  else if(action==='set-report-frame'){ state.reportFrame = el.dataset.frame; render(); }
+  }catch(err){
+    console.error('Action failed:', action, err);
+    alert('Something went wrong: ' + (err && err.message ? err.message : String(err)));
+  }
+});
+
+document.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const formId = e.target.getAttribute('id');
+  try{
+    if(formId==='login-form'){
+      const fd = new FormData(e.target);
+      const email = (fd.get('email')||'').trim();
+      const password = fd.get('password')||'';
+      state.authError = null;
+      const btn = document.getElementById('login-submit-btn');
+      if(btn){ btn.disabled = true; btn.textContent = 'Signing in…'; }
+      if(!window.fbSignIn){
+        state.authError = 'Sign-in is not available right now. Please refresh and try again.';
+        render();
+        return;
+      }
+      window.fbSignIn(email, password).catch(err=>{
+        console.error('Sign-in failed', err);
+        const code = err && err.code || '';
+        if(code.indexOf('invalid-credential')!==-1 || code.indexOf('wrong-password')!==-1 || code.indexOf('user-not-found')!==-1){
+          state.authError = 'Incorrect email or password.';
+        }else if(code.indexOf('too-many-requests')!==-1){
+          state.authError = 'Too many attempts — please wait a moment and try again.';
+        }else if(code.indexOf('invalid-email')!==-1){
+          state.authError = "That email address doesn't look right.";
+        }else{
+          state.authError = 'Could not sign in: ' + (err && err.message ? err.message : 'unknown error');
+        }
+        render();
+      });
+      return;
+    }
+    if(formId==='dog-form') handleDogFormSubmit(e.target);
+    else if(formId==='health-form') handleHealthFormSubmit(e.target);
+    else if(formId==='training-form') handleTrainingFormSubmit(e.target);
+    else if(formId==='food-form') handleFoodFormSubmit(e.target);
+    else if(formId==='restock-form') handleRestockSubmit(e.target);
+    else if(formId==='feeding-form') handleFeedingFormSubmit(e.target);
+    else if(formId==='quick-ration-form'){
+      const fd = new FormData(e.target);
+      quickLogRations(e.target.dataset.id, fd.get('handlerId') || '');
+    }
+    else if(formId==='medicine-form') handleMedicineFormSubmit(e.target);
+    else if(formId==='handler-form') handleHandlerFormSubmit(e.target);
+    else if(formId==='med-restock-form') handleMedRestockSubmit(e.target);
+    else if(formId==='medication-form') handleMedicationFormSubmit(e.target);
+    else if(formId==='pin-form'){
+      const fd = new FormData(e.target);
+      const entered = (fd.get('pin')||'').trim();
+      const expected = state.settings.pins ? state.settings.pins[state.pendingRole] : null;
+      if(entered && entered === (expected||'')){
+        state.role=state.pendingRole; state.pendingRole=null; state.pinError=null; state.view='dashboard';
+      }else{
+        state.pinError = 'Incorrect PIN.';
+      }
+      render();
+    }
+    else if(formId==='settings-form'){
+      const fd = new FormData(e.target);
+      const adminPin = (fd.get('adminPin')||'').trim();
+      const dataEntryPin = (fd.get('dataEntryPin')||'').trim();
+      const viewerPin = (fd.get('viewerPin')||'').trim();
+      state.settings.pins = { admin: adminPin || null, data_entry: dataEntryPin || null, viewer: viewerPin || null };
+      saveSettings();
+      state.view='dashboard';
+      render();
+    }
+    else if(formId==='contact-form'){
+      const fd = new FormData(e.target);
+      state.settings.contactOrgName = (fd.get('orgName')||'').trim();
+      state.settings.contactPhone = (fd.get('phone')||'').trim();
+      state.settings.contactEmail = (fd.get('email')||'').trim();
+      state.settings.contactAddress = (fd.get('address')||'').trim();
+      state.settings.contactNotes = (fd.get('notes')||'').trim();
+      saveSettings();
+      render();
+    }
+    else if(formId==='heading-form'){
+      const fd = new FormData(e.target);
+      state.settings.headingText = (fd.get('headingText')||'').trim();
+      state.settings.headingFont = fd.get('headingFont') || '';
+      state.settings.headingScale = fd.get('headingScale') || '1';
+      state.settings.headingColor = fd.get('headingColor') || '';
+      saveSettings();
+      render();
+    }
+  }catch(err){
+    console.error('Form submit failed:', err);
+    alert('Something went wrong while saving: ' + (err && err.message ? err.message : String(err)));
+  }
+});
+
+window.addEventListener('beforeprint', function(){
+  const ts = document.getElementById('print-timestamp');
+  if(ts) ts.textContent = new Date().toLocaleString();
+});
+
+window.addEventListener('error', function(e){
+  console.error('Uncaught error:', e.error || e.message);
+  alert('Something went wrong and your last action may not have saved:\n\n' + (e.message || 'Unknown error') + '\n\nPlease try again. If this keeps happening, note exactly what you were doing and let me know — this message means there is a real bug to fix.');
+});
+
+window.onFirebaseAuthChange = function(user){
+  state.authChecked = true;
+  if(user){
+    state.authUser = user;
+    state.authError = null;
+    state.storageMode = null;
+    state.loading = true;
+    render();
+    loadData();
+  }else{
+    state.authUser = null;
+    state.role = null;
+    state.pendingRole = null;
+    state.view = 'dashboard';
+    state.dogs = []; state.healthLogs = []; state.trainingLogs = [];
+    state.foodItems = []; state.feedingLogs = [];
+    state.medicineItems = []; state.medicationLogs = [];
+    state.handlers = [];
+    state.settings = { pins:{admin:null, data_entry:null, viewer:null} };
+    state.storageMode = null;
+    state.loading = true;
+    render();
+  }
+};
+render();
+</script>
+</body>
+</html>

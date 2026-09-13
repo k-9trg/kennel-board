@@ -667,7 +667,27 @@ const saveFoodItems = () => safeSet('food-items', state.foodItems);
 const saveFeedingLogs = () => safeSet('feeding-logs', state.feedingLogs);
 const saveMedicineItems = () => safeSet('medicine-items', state.medicineItems);
 const saveMedicationLogs = () => safeSet('medication-logs', state.medicationLogs);
-const saveSettings = () => safeSet('app-settings', state.settings);
+const BRANDING_CACHE_KEY = 'kennelBoard:brandingCache';
+function cacheBrandingLocally(){
+  try{
+    const branding = {
+      logoDataUrl: state.settings.logoDataUrl || null,
+      logoScaleRolePicker: state.settings.logoScaleRolePicker || 100,
+      headingText: state.settings.headingText || '',
+      headingFont: state.settings.headingFont || '',
+      headingColor: state.settings.headingColor || '',
+      headingScale: state.settings.headingScale || '1'
+    };
+    localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(branding));
+  }catch(e){ /* localStorage unavailable — sign-in screen just won't show cached branding */ }
+}
+function loadCachedBrandingIntoSettings(){
+  try{
+    const raw = localStorage.getItem(BRANDING_CACHE_KEY);
+    if(raw) Object.assign(state.settings, JSON.parse(raw));
+  }catch(e){ /* no cache yet, or localStorage unavailable — fine, sign-in screen shows defaults */ }
+}
+const saveSettings = () => { cacheBrandingLocally(); return safeSet('app-settings', state.settings); };
 const saveHandlers = () => safeSet('handlers', state.handlers);
 
 async function loadData(){
@@ -688,6 +708,7 @@ async function loadData(){
   }
   state.handlers = handlers || [];
   state.loading = false;
+  cacheBrandingLocally();
   render();
 }
 
@@ -3198,11 +3219,13 @@ window.onFirebaseAuthChange = function(user){
     state.medicineItems = []; state.medicationLogs = [];
     state.handlers = [];
     state.settings = { pins:{admin:null, data_entry:null, viewer:null} };
+    loadCachedBrandingIntoSettings();
     state.storageMode = null;
     state.loading = true;
     render();
   }
 };
+loadCachedBrandingIntoSettings();
 render();
 </script>
 </body>

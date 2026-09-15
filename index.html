@@ -1062,9 +1062,6 @@ function renderRolePicker(){
       <button class="btn secondary full" data-action="choose-role" data-role="viewer">Viewer</button>
     </div>
     ${state.pendingRole ? renderPinForm() : ''}
-    <div style="max-width:280px; margin:18px auto 0;">
-      <label class="btn ghost full" style="cursor:pointer; display:flex; justify-content:center;">Import backup<input type="file" accept="application/json,.json" id="import-backup-input" style="display:none;" /></label>
-    </div>
     <p class="footnote" style="margin-top:20px; max-width:300px; margin-left:auto; margin-right:auto;">This chooses a view mode for whoever's on this device right now — it's a way to keep records tidy, not secure login.</p>
   </div>`;
 }
@@ -1193,9 +1190,10 @@ function renderSettings(){
 
   <h3 style="font-size:14px; color:var(--spruce-dark); margin:18px 0 8px;">Backup &amp; Restore</h3>
   <div class="form-card">
-    <p class="fld-hint" style="margin-bottom:12px;">Save every record to a file in your own storage — phone, computer, or a cloud drive you choose — independent of this browser or device. To restore from a backup, use the Import backup option on the role-selection screen (switch role, then Import backup).</p>
+    <p class="fld-hint" style="margin-bottom:12px;">Save every record to a file in your own storage — phone, computer, or a cloud drive you choose — independent of this browser or device. Importing a backup replaces all current records.</p>
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <button type="button" class="btn secondary" data-action="export-backup">Export backup</button>
+      <label class="btn ghost" style="cursor:pointer;">Import backup<input type="file" accept="application/json,.json" id="import-backup-input" style="display:none;" /></label>
     </div>
   </div>`;
 }

@@ -1733,8 +1733,9 @@ function renderHandlerForm(){
       <div class="fld"><label>Role</label>
         <input name="role" value="${esc(h.role)}" list="handler-role-suggestions" placeholder="e.g. Primary Handler" />
         <datalist id="handler-role-suggestions">
-          <option value="Primary Handler"><option value="Assistant Handler"><option value="Trainer">
-          <option value="Kennel Master"><option value="Supervisor">
+          <option value="Dog Handler"><option value="Sanitary Worker"><option value="Trainer">
+          <option value="Kennel Boy"><option value="Supervisor"><option value="Husbandary Professional">
+          <option value="DVM"><option value="Veterinarian">
         </datalist>
       </div>
       <div class="fld"><label>Date of Deployment</label><input type="date" name="deploymentDate" value="${esc(h.deploymentDate)}" /></div>

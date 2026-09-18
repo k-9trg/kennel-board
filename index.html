@@ -259,6 +259,16 @@
   .dog-card .dc-main{ flex:1; min-width:0; }
   .dog-card .eyebrow{ font-size:10.5px; color:var(--brass); letter-spacing:0.08em; font-weight:500; }
   .dog-card .name{ font-size:16.5px; font-weight:600; color:var(--ink); }
+  .sex-sym{ font-weight:700; font-size:1.05em; line-height:1; }
+  .sex-sym.male{ color:#2C6FA8; }
+  .sex-sym.female{ color:#B5416E; }
+  .posted-out-notice{
+    background:var(--amber-tint); color:#7A5A1E;
+    border:1px solid var(--amber); border-left-width:4px;
+    border-radius:var(--radius-sm); padding:11px 13px;
+    font-size:13px; line-height:1.5; margin-bottom:12px;
+  }
+  .badge.dog-posted-out{ background:var(--line); color:var(--ink-soft); }
   .dog-card .sub{ font-size:12.5px; color:var(--ink-soft); margin-top:1px; }
   .badge{
     display:inline-block; font-size:11px; font-weight:600; padding:3px 9px;
@@ -743,6 +753,31 @@ function ageString(dob){
   return years + (years===1?' year':' years') + (remMonths ? ', ' + remMonths + (remMonths===1?' mo':' mo') : '');
 }
 function roleLabel(v){ const r = ROLES.find(r=>r.v===v); return r ? r.l : v; }
+function sexSymbol(sex){
+  if(sex==='M') return '\u2642';
+  if(sex==='F') return '\u2640';
+  return '';
+}
+function sexSymbolHtml(sex){
+  if(!sex) return '';
+  const cls = sex==='M' ? 'male' : sex==='F' ? 'female' : '';
+  if(!cls) return '';
+  const label = sex==='M' ? 'Male' : 'Female';
+  return ` <span class="sex-sym ${cls}" title="${label}" aria-label="${label}">${sexSymbol(sex)}</span>`;
+}
+function isPostedOut(dog){ return !!(dog && dog.role === 'posted_out'); }
+function blockIfPostedOut(dogId){
+  const dog = state.dogs.find(d=>d.id===(dogId || state.selectedDogId));
+  if(isPostedOut(dog)){
+    alert(dog.name + ' is marked Posted Out, so new activity cannot be logged. Change the dog\u2019s role if that is not right.');
+    return true;
+  }
+  return false;
+}
+function postedOutNotice(dog){
+  if(!isPostedOut(dog)) return '';
+  return `<div class="posted-out-notice">This dog is marked <strong>Posted Out</strong> \u2014 activity logging is closed. Existing records stay visible. Change the dog\u2019s role to resume logging.</div>`;
+}
 function dueStatusClass(days){
   if(days < 0) return 'overdue';
   if(days <= 14) return 'due-soon';
@@ -958,9 +993,10 @@ function computeAlerts(){
   const items = [];
   state.healthLogs.forEach(h=>{
     if(!h.nextDueDate) return;
+    const dog = state.dogs.find(d=>d.id===h.dogId);
+    if(isPostedOut(dog)) return; // posted-out dogs no longer generate due-date reminders
     const days = daysUntil(h.nextDueDate);
     if(days <= 14){
-      const dog = state.dogs.find(d=>d.id===h.dogId);
       items.push({ sortKey:days, name: dog ? dog.name : 'Unknown dog', detail:h.type, badge:dueLabel(days), urgent: days<0 });
     }
   });
@@ -1273,7 +1309,7 @@ function renderRosterCards(dogsArr){
       </div>
       <div class="dc-main">
         <div class="eyebrow">RUN ${String(idx).padStart(2,'0')}</div>
-        <div class="name">${esc(d.name)}</div>
+        <div class="name">${esc(d.name)}${sexSymbolHtml(d.sex)}</div>
         <div class="sub">${esc(d.breed||'Breed unknown')} · ${esc(ageString(d.dob))}</div>
       </div>
       <span class="badge role-${d.role}">${esc(roleLabel(d.role))}</span>
@@ -1600,14 +1636,16 @@ function renderFeedingTabContent(dog){
         <div class="le-notes">${qtyLabel(fe.amount, foodUnitFor(fe.foodName))} fed${fe.notes ? ' — '+esc(fe.notes) : ''}${handler ? ' · Fed by '+esc(handler) : ' · Handler not recorded'}</div>
       </div>`;
     }).join('');
+  const blocked = isPostedOut(dog);
   return `
+    ${postedOutNotice(dog)}
     ${rationLine}
     <div class="section-actions">
-      ${canAdd() && rations.length ? `<button class="btn secondary" data-action="toggle-quick-ration-form" data-id="${dog.id}">${state.showQuickRationForm?'Cancel':"Log today's rations"}</button>` : ''}
-      ${canAdd() ? `<button class="btn" data-action="toggle-feeding-form">${state.showFeedingForm?'Cancel':'+ Log feeding'}</button>` : ''}
+      ${canAdd() && !blocked && rations.length ? `<button class="btn secondary" data-action="toggle-quick-ration-form" data-id="${dog.id}">${state.showQuickRationForm?'Cancel':"Log today's rations"}</button>` : ''}
+      ${canAdd() && !blocked ? `<button class="btn" data-action="toggle-feeding-form">${state.showFeedingForm?'Cancel':'+ Log feeding'}</button>` : ''}
     </div>
-    ${state.showQuickRationForm ? renderQuickRationForm(dog) : ''}
-    ${state.showFeedingForm ? renderFeedingForm(dog) : ''}
+    ${state.showQuickRationForm && !blocked ? renderQuickRationForm(dog) : ''}
+    ${state.showFeedingForm && !blocked ? renderFeedingForm(dog) : ''}
     ${list}
   `;
 }
@@ -1641,11 +1679,13 @@ function renderMedicineTabContent(dog){
         <div class="le-notes">${qtyLabel(me.amount, medicineUnitFor(me.medicineName))} given${me.reason ? ' — '+esc(me.reason) : ''}${me.notes ? ' — '+esc(me.notes) : ''}${handler ? ' · Given by '+esc(handler) : ' · Handler not recorded'}</div>
       </div>`;
     }).join('');
+  const blocked = isPostedOut(dog);
   return `
+    ${postedOutNotice(dog)}
     <div class="section-actions">
-      ${canAdd() ? `<button class="btn" data-action="toggle-medication-form">${state.showMedicationForm?'Cancel':'+ Log medicine given'}</button>` : ''}
+      ${canAdd() && !blocked ? `<button class="btn" data-action="toggle-medication-form">${state.showMedicationForm?'Cancel':'+ Log medicine given'}</button>` : ''}
     </div>
-    ${state.showMedicationForm ? renderMedicationForm(dog) : ''}
+    ${state.showMedicationForm && !blocked ? renderMedicationForm(dog) : ''}
     ${list}
   `;
 }
@@ -2102,7 +2142,7 @@ function renderDogDetail(){
         <div class="info-row"><span class="k">Date of birth</span><span class="v">${dog.dob? fmtDate(dog.dob) : '—'}</span></div>
         <div class="info-row"><span class="k">Age</span><span class="v">${esc(ageString(dog.dob))}</span></div>
         <div class="info-row"><span class="k">Weight</span><span class="v">${dog.weight ? dog.weight + ' kg' : '—'}</span></div>
-        <div class="info-row"><span class="k">Sex</span><span class="v">${dog.sex==='M'?'Male':dog.sex==='F'?'Female':'—'}</span></div>
+        <div class="info-row"><span class="k">Sex</span><span class="v">${dog.sex==='M'?'Male':dog.sex==='F'?'Female':'—'}${sexSymbolHtml(dog.sex)}</span></div>
         <div class="info-row"><span class="k">Role</span><span class="v">${esc(roleLabel(dog.role))}</span></div>
         <div class="info-row"><span class="k">Microchip</span><span class="v mono">${esc(dog.microchip||'—')}</span></div>
       </div>
@@ -2111,10 +2151,11 @@ function renderDogDetail(){
   } else if(state.detailTab==='health'){
     const logs = dogHealthLogs(dog.id);
     tabBody = `
+      ${postedOutNotice(dog)}
       <div class="section-actions">
-        ${canAdd() ? `<button class="btn" data-action="toggle-health-form">${state.showHealthForm?'Cancel':'+ Log health entry'}</button>` : ''}
+        ${canAdd() && !isPostedOut(dog) ? `<button class="btn" data-action="toggle-health-form">${state.showHealthForm?'Cancel':'+ Log health entry'}</button>` : ''}
       </div>
-      ${state.showHealthForm ? renderHealthForm() : ''}
+      ${state.showHealthForm && !isPostedOut(dog) ? renderHealthForm() : ''}
       ${logs.length===0 ? `<div class="empty-state">No health records yet.</div>` :
         logs.map(h=>{
           const due = h.nextDueDate ? dueStatusClass(daysUntil(h.nextDueDate)) : null;
@@ -2127,6 +2168,7 @@ function renderDogDetail(){
             </div>
             <div style="margin-bottom:6px;"><span class="le-type">${esc(h.type)}</span></div>
             ${h.notes ? `<div class="le-notes">${esc(h.notes)}</div>` : ''}
+            ${h.medicineName ? `<div class="le-notes" style="color:var(--ink-soft); font-size:12.5px;">Medicine: ${esc(qtyLabel(h.medicineAmount, medicineUnitFor(h.medicineName)))} of ${esc(h.medicineName)}</div>` : ''}
             ${handler ? `<div class="le-notes" style="color:var(--ink-soft); font-size:12.5px;">Conducted by ${esc(handler)}</div>` : ''}
             ${h.nextDueDate ? `<div class="le-due ${due}">Next due ${fmtDate(h.nextDueDate)} · ${esc(dueLabel(daysUntil(h.nextDueDate)))}</div>` : ''}
           </div>`;
@@ -2136,10 +2178,11 @@ function renderDogDetail(){
   } else if(state.detailTab==='training'){
     const logs = dogTrainingLogs(dog.id);
     tabBody = `
+      ${postedOutNotice(dog)}
       <div class="section-actions">
-        ${canAdd() ? `<button class="btn" data-action="toggle-training-form">${state.showTrainingForm?'Cancel':'+ Log training session'}</button>` : ''}
+        ${canAdd() && !isPostedOut(dog) ? `<button class="btn" data-action="toggle-training-form">${state.showTrainingForm?'Cancel':'+ Log training session'}</button>` : ''}
       </div>
-      ${state.showTrainingForm ? renderTrainingForm() : ''}
+      ${state.showTrainingForm && !isPostedOut(dog) ? renderTrainingForm() : ''}
       ${logs.length===0 ? `<div class="empty-state">No training records yet.</div>` :
         logs.map(t=>{
           const handler = handlerName(t.handlerId);
@@ -2170,7 +2213,7 @@ function renderDogDetail(){
       <div class="avatar avatar-xl">${dog.photoDataUrl ? `<img src="${dog.photoDataUrl}" alt="" />` : esc((dog.name||'?').charAt(0).toUpperCase())}</div>
       <div class="detail-head-info">
         <div class="detail-title">
-          <h1>${esc(dog.name)}</h1>
+          <h1>${esc(dog.name)}${sexSymbolHtml(dog.sex)}</h1>
           <div class="sub">${esc(dog.breed||'Breed unknown')} · ${esc(roleLabel(dog.role))}</div>
           ${dog.weight ? `<div class="sub" style="margin-top:2px;">${dog.weight} kg</div>` : ''}
         </div>
@@ -2274,6 +2317,16 @@ function renderHealthForm(){
       <div class="fld"><label>Conducted by (Handler) <span class="req">*</span></label>
         <select name="handlerId" required>${handlerOptions(null)}</select>
       </div>
+      <div class="fld-row">
+        <div class="fld"><label>Medicine used (optional)</label>
+          <select name="medicineName">
+            <option value="">— None —</option>
+            ${uniqueMedicineNames().map(n=>`<option value="${esc(n)}">${esc(n)} (${qtyLabel(medicineTotalStock(n),medicineUnitFor(n))} total)</option>`).join('')}
+          </select>
+        </div>
+        <div class="fld"><label>Amount used</label><input type="number" step="0.01" min="0" name="medicineAmount" placeholder="e.g. 2" /></div>
+      </div>
+      <div class="fld-hint" style="margin:-4px 0 12px;">${uniqueMedicineNames().length ? 'Leave medicine as \u201cNone\u201d if none was used. Anything selected is deducted from Medicine Stock and also appears on this dog\u2019s Medicine tab.' : 'No medicine in stock yet \u2014 add some in the Medicine tab to attach it here.'}</div>
       <div class="fld"><label>Next due date (optional)</label><input type="date" name="nextDueDate" /></div>
       <div class="form-actions">
         <button type="button" class="btn ghost" data-action="toggle-health-form">Cancel</button>
@@ -2547,6 +2600,13 @@ function deleteDog(id){
   render();
 }
 function deleteHealthEntry(id){
+  const linked = state.medicationLogs.filter(m=>m.linkedHealthId===id);
+  if(linked.length){
+    linked.forEach(m=>{ if(m.medicineName) restoreMedicineStock(m.medicineName, m.amount, m.date); });
+    state.medicationLogs = state.medicationLogs.filter(m=>m.linkedHealthId!==id);
+    saveMedicineItems();
+    saveMedicationLogs();
+  }
   state.healthLogs = state.healthLogs.filter(h=>h.id!==id);
   saveHealthLogs();
   render();
@@ -2616,6 +2676,7 @@ function deleteMedicineItem(id){
 function quickLogRations(dogId, handlerId){
   const dog = state.dogs.find(d=>d.id===dogId);
   if(!dog) return;
+  if(blockIfPostedOut(dogId)) return;
   if(!handlerId){ alert('Please select the handler doing the feeding.'); return; }
   const rations = dogRations(dog);
   if(rations.length===0) return;
@@ -2658,6 +2719,11 @@ function deleteMedicationEntry(id){
   if(entry && entry.medicineName){
     restoreMedicineStock(entry.medicineName, entry.amount, entry.date);
     saveMedicineItems();
+  }
+  if(entry && entry.linkedHealthId){
+    // keep the originating health entry truthful — it no longer has medicine attached
+    state.healthLogs = state.healthLogs.map(h=> h.id===entry.linkedHealthId ? {...h, medicineName:null, medicineAmount:null} : h);
+    saveHealthLogs();
   }
   state.medicationLogs = state.medicationLogs.filter(m=>m.id!==id);
   saveMedicationLogs();
@@ -2709,6 +2775,7 @@ function handleDogFormSubmit(form){
 }
 
 function handleHealthFormSubmit(form){
+  if(blockIfPostedOut()) return;
   const fd = new FormData(form);
   const handlerId = fd.get('handlerId') || '';
   if(!handlerId){
@@ -2716,22 +2783,60 @@ function handleHealthFormSubmit(form){
     else{ alert('Please select the handler who conducted this activity.'); }
     return;
   }
+  const date = fd.get('date') || todayISO();
+  const medicineName = fd.get('medicineName') || '';
+  const medicineAmount = parseFloat(fd.get('medicineAmount')) || 0;
+  if(medicineName){
+    if(medicineAmount<=0){
+      alert('Enter how much ' + medicineName + ' was used, or set Medicine used back to “None”.');
+      return;
+    }
+    const earliestBatch = medicineBatchesByName(medicineName)[0];
+    if(earliestBatch && earliestBatch.purchaseDate && date < earliestBatch.purchaseDate){
+      alert('This date (' + fmtDate(date) + ') is before ' + medicineName + ' was first stocked (' + fmtDate(earliestBatch.purchaseDate) + '). Please check the date.');
+      return;
+    }
+    const available = medicineTotalStock(medicineName, date);
+    if(medicineAmount > available){
+      alert('Only ' + qtyLabel(available, medicineUnitFor(medicineName)) + ' of ' + medicineName + ' was in stock as of ' + fmtDate(date) + ' — cannot log ' + qtyLabel(medicineAmount, medicineUnitFor(medicineName)) + '.');
+      return;
+    }
+  }
   const entry = {
     id: uid(),
     dogId: state.selectedDogId,
-    date: fd.get('date') || todayISO(),
+    date,
     type: fd.get('type') || 'Other',
     notes: (fd.get('notes')||'').trim(),
     handlerId,
+    medicineName: medicineName || null,
+    medicineAmount: medicineName ? medicineAmount : null,
     nextDueDate: fd.get('nextDueDate') || null
   };
   state.healthLogs.push(entry);
   saveHealthLogs();
+  if(medicineName){
+    state.medicationLogs.push({
+      id: uid(),
+      dogId: state.selectedDogId,
+      date,
+      medicineName,
+      amount: medicineAmount,
+      handlerId,
+      reason: entry.type,
+      notes: 'Logged with health activity',
+      linkedHealthId: entry.id
+    });
+    deductMedicineStock(medicineName, medicineAmount, date);
+    saveMedicineItems();
+    saveMedicationLogs();
+  }
   state.showHealthForm = false;
   render();
 }
 
 function handleTrainingFormSubmit(form){
+  if(blockIfPostedOut()) return;
   const fd = new FormData(form);
   const handlerId = fd.get('handlerId') || '';
   if(!handlerId){
@@ -2825,6 +2930,7 @@ function handleRestockSubmit(form){
 }
 
 function handleFeedingFormSubmit(form){
+  if(blockIfPostedOut()) return;
   const fd = new FormData(form);
   const foodName = fd.get('foodName') || '';
   const amount = parseFloat(fd.get('amount')) || 0;
@@ -2935,6 +3041,7 @@ function handleMedRestockSubmit(form){
 }
 
 function handleMedicationFormSubmit(form){
+  if(blockIfPostedOut()) return;
   const fd = new FormData(form);
   const medicineName = fd.get('medicineName') || '';
   const amount = parseFloat(fd.get('amount')) || 0;

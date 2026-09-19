@@ -219,6 +219,29 @@
   #report-list .dog-card{ min-height:80px; align-items:flex-start; }
   #roster-list .dog-card{ min-height:76px; }
   #roster-list .dog-card .badge{ align-self:flex-start; }
+  .batch-list{ display:flex; flex-direction:column; gap:8px; }
+  .batch-row{
+    display:flex; align-items:center; gap:11px;
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:10px 12px; cursor:pointer;
+  }
+  .batch-row.checked{ border-color:var(--brass); background:#FFFDF8; }
+  .batch-row .dc-main{ flex:1; min-width:0; }
+  .batch-row .sub{ font-size:12px; color:var(--ink-soft); margin-top:1px; }
+  .batch-check{
+    width:20px; height:20px; border-radius:5px; flex-shrink:0;
+    border:2px solid var(--line); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .batch-check.on{ background:var(--brass); border-color:var(--brass); }
+  .fed-badge{
+    font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:20px;
+    background:var(--spruce-tint); color:var(--spruce-dark); vertical-align:1px;
+  }
+  .btn[disabled]{ opacity:0.5; cursor:not-allowed; }
+  @media (min-width:700px){
+    .batch-list{ display:grid; grid-template-columns:repeat(2, 1fr); }
+  }
   .status-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--sage); }
   .status-dot.ok{ background:#4C7A5C; }
   .status-dot.due-soon{ background:var(--amber); }
@@ -508,6 +531,9 @@ const state = {
   showFeedingForm:false,
   showQuickRationForm:false,
   search:'',
+  batchFeedDate:'',
+  batchFeedHandler:'',
+  batchFeedSelected:{},
   rosterFilterBreed:'',
   rosterFilterSex:'',
   rosterFilterRole:'',
@@ -910,6 +936,56 @@ function dogRations(dog){
     return null;
   }).filter(Boolean);
 }
+/* ---------------- Batch (daily) feeding ---------------- */
+function batchFeedDogs(){
+  // every dog still on strength — posted-out dogs are excluded from daily feeding
+  return state.dogs
+    .filter(d => !isPostedOut(d))
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'}));
+}
+function dogFedOn(dogId, date){
+  return state.feedingLogs.some(f=>f.dogId===dogId && f.date===date);
+}
+function batchSelectedIds(){
+  return Object.keys(state.batchFeedSelected || {}).filter(id => state.batchFeedSelected[id]);
+}
+function batchRequirements(){
+  // total amount needed per food name across all currently selected dogs
+  const totals = {};
+  batchSelectedIds().forEach(id=>{
+    const dog = state.dogs.find(d=>d.id===id);
+    if(!dog) return;
+    dogRations(dog).forEach(r=>{
+      totals[r.foodName] = round2((totals[r.foodName]||0) + r.amount);
+    });
+  });
+  return totals;
+}
+function batchShortfalls(date){
+  // foods where the combined requirement exceeds what is actually in stock on that date
+  const totals = batchRequirements();
+  const short = [];
+  Object.keys(totals).forEach(name=>{
+    const available = foodTotalStock(name, date);
+    if(totals[name] > available){
+      short.push({ name, needed: totals[name], available, unit: foodUnitFor(name) });
+    }
+  });
+  return short;
+}
+function initBatchFeeding(){
+  state.batchFeedDate = todayISO();
+  state.batchFeedHandler = '';
+  seedBatchSelection();
+}
+function seedBatchSelection(){
+  // pre-tick every dog that has a ration set and hasn't already been fed on this date
+  const sel = {};
+  batchFeedDogs().forEach(d=>{
+    if(dogRations(d).length && !dogFedOn(d.id, state.batchFeedDate)) sel[d.id] = true;
+  });
+  state.batchFeedSelected = sel;
+}
 function resizeImageFile(file, maxDim, quality, format){
   format = format || 'image/jpeg';
   return new Promise((resolve, reject)=>{
@@ -1113,7 +1189,8 @@ const ICONS = {
   mail: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
   phone: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>',
   bell: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
-  filter: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 5h18l-7 8v6l-4-2v-4Z"/></svg>'
+  filter: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 5h18l-7 8v6l-4-2v-4Z"/></svg>',
+  check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
 };
 
 /* ---------------- Render: role & settings ---------------- */
@@ -1288,7 +1365,7 @@ function backBar(action, label){
   </div>`;
 }
 function renderTopbar(){
-  const topLevel = ['dashboard','foodInventory','medicineInventory','handlersInventory','reports'];
+  const topLevel = ['dashboard','batchFeeding','foodInventory','medicineInventory','handlersInventory','reports'];
   if(topLevel.includes(state.view)){
     return `
     <div class="topbar">
@@ -1368,6 +1445,7 @@ function renderSidebar(){
   if(!state.role) return '';
   const items = [
     {view:'dashboard', action:'go-dashboard', label:'Roster', icon:ICONS.paw},
+    ...(canAdd() ? [{view:'batchFeeding', action:'go-batch-feeding', label:'Daily Feeding', icon:ICONS.bowl}] : []),
     {view:'foodInventory', action:'go-food', label:'Food Stock', icon:ICONS.bowl},
     {view:'medicineInventory', action:'go-medicine', label:'Medicine', icon:ICONS.pill},
     {view:'handlersInventory', action:'go-handlers', label:'Handlers', icon:ICONS.person},
@@ -1375,6 +1453,7 @@ function renderSidebar(){
   ];
   const groupOf = {
     dashboard:'dashboard', dogDetail:'dashboard', dogForm:'dashboard',
+    batchFeeding:'batchFeeding',
     foodInventory:'foodInventory', foodForm:'foodInventory',
     medicineInventory:'medicineInventory', medicineForm:'medicineInventory',
     handlersInventory:'handlersInventory', handlerForm:'handlersInventory',
@@ -1738,6 +1817,85 @@ function renderFeedingTabContent(dog){
     ${state.showQuickRationForm && !blocked ? renderQuickRationForm(dog) : ''}
     ${state.showFeedingForm && !blocked ? renderFeedingForm(dog) : ''}
     ${list}
+  `;
+}
+function renderBatchFeeding(){
+  const date = state.batchFeedDate || todayISO();
+  const dogs = batchFeedDogs();
+  const withRations = dogs.filter(d=>dogRations(d).length);
+  const withoutRations = dogs.filter(d=>!dogRations(d).length);
+  const postedOutCount = state.dogs.length - dogs.length;
+  const selectedIds = batchSelectedIds();
+  const totals = batchRequirements();
+  const short = batchShortfalls(date);
+  const foodNames = Object.keys(totals).sort((a,b)=>a.localeCompare(b));
+
+  const rows = withRations.map(d=>{
+    const checked = !!state.batchFeedSelected[d.id];
+    const fed = dogFedOn(d.id, date);
+    const rations = dogRations(d);
+    return `
+      <div class="batch-row ${checked?'checked':''}" data-action="toggle-batch-dog" data-id="${d.id}">
+        <span class="batch-check ${checked?'on':''}">${checked?ICONS.check:''}</span>
+        <div class="avatar" style="width:32px;height:32px;font-size:13px;">${d.photoDataUrl ? `<img src="${d.photoDataUrl}" alt="" />` : esc((d.name||'?').charAt(0).toUpperCase())}</div>
+        <div class="dc-main">
+          <div class="name" style="font-size:14.5px;">${esc(d.name)}${sexSymbolHtml(d.sex)}${fed?` <span class="fed-badge">Already fed</span>`:''}</div>
+          <div class="sub">${rations.map(r=>esc(qtyLabel(r.amount, foodUnitFor(r.foodName))+' '+r.foodName)).join(' · ')}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const summaryRows = foodNames.map(n=>{
+    const available = foodTotalStock(n, date);
+    const isShort = totals[n] > available;
+    return `<div class="info-row"><span class="k">${esc(n)}</span><span class="v" style="${isShort?'color:var(--rust);':''}">${esc(qtyLabel(totals[n], foodUnitFor(n)))} needed <span style="color:var(--ink-soft); font-weight:400;">/ ${esc(qtyLabel(available, foodUnitFor(n)))} in stock</span></span></div>`;
+  }).join('');
+
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:4px;">Daily Feeding</h1>
+    <p class="fld-hint" style="margin-bottom:14px;">Log each dog's set daily ration in one go.${postedOutCount?` ${postedOutCount} posted-out dog${postedOutCount===1?' is':'s are'} excluded.`:''}</p>
+
+    <div class="form-card">
+      <div class="fld-row">
+        <div class="fld" style="margin-bottom:0;"><label>Date <span class="req">*</span></label><input type="date" id="batch-feed-date" value="${esc(date)}" /></div>
+        <div class="fld" style="margin-bottom:0;"><label>Fed by (Handler) <span class="req">*</span></label>
+          <select id="batch-feed-handler">${handlerOptions(state.batchFeedHandler||null)}</select>
+        </div>
+      </div>
+    </div>
+
+    ${withRations.length === 0 ? `
+      <div class="empty-state">No dogs have a daily ration set yet.<br>Open a dog, tap <strong>Edit</strong>, and fill in the <strong>Daily feeding</strong> rows first.</div>
+    ` : `
+      <div class="roster-header" style="margin-top:16px;">
+        <h2 style="font-size:15px;">Dogs <span class="count">(${selectedIds.length} of ${withRations.length} selected)</span></h2>
+        <div style="display:flex; gap:8px;">
+          <button class="btn ghost" data-action="batch-select-all" style="padding:7px 12px; font-size:12.5px;">All</button>
+          <button class="btn ghost" data-action="batch-select-none" style="padding:7px 12px; font-size:12.5px;">None</button>
+        </div>
+      </div>
+      <div class="batch-list">${rows}</div>
+
+      ${foodNames.length ? `
+        <h3 style="font-size:14px; color:var(--spruce-dark); margin:18px 0 8px;">Food required</h3>
+        <div class="form-card">
+          ${summaryRows}
+          ${short.length ? `<div class="posted-out-notice" style="margin-top:10px; margin-bottom:0;">Not enough stock for ${short.map(s=>esc(s.name)).join(', ')}. Restock, or unselect some dogs, before logging.</div>` : ''}
+        </div>
+      ` : ''}
+
+      <button class="btn full" data-action="batch-feed-submit" style="margin-top:14px;" ${selectedIds.length===0||short.length?'disabled':''}>
+        ${selectedIds.length===0 ? 'Select at least one dog' : (short.length ? 'Not enough stock' : `Log feeding for ${selectedIds.length} dog${selectedIds.length===1?'':'s'}`)}
+      </button>
+    `}
+
+    ${withoutRations.length ? `
+      <h3 style="font-size:14px; color:var(--spruce-dark); margin:20px 0 8px;">No daily ration set (${withoutRations.length})</h3>
+      <div class="form-card">
+        <p class="fld-hint" style="margin-bottom:8px;">These dogs can't be batch-fed until a daily ration is set on their profile.</p>
+        ${withoutRations.map(d=>`<div class="info-row"><span class="k">${esc(d.name)}</span><span class="v"><button class="btn ghost" data-action="view-dog" data-id="${d.id}" style="padding:5px 10px; font-size:12px;">Open</button></span></div>`).join('')}
+      </div>
+    ` : ''}
   `;
 }
 function renderQuickRationForm(dog){
@@ -2458,7 +2616,7 @@ function renderTrainingForm(){
 }
 
 /* ---------------- Main render ---------------- */
-const WIDE_VIEWS = ['dashboard','foodInventory','medicineInventory','handlersInventory','reports'];
+const WIDE_VIEWS = ['dashboard','batchFeeding','foodInventory','medicineInventory','handlersInventory','reports'];
 function render(){
   if(typeof document.title !== 'undefined'){ try{ document.title = (appHeadingText() ? appHeadingText() + ' · ' : '') + 'Kennel Board — Health & Training Tracker'; }catch(e){} }
   const app = document.getElementById('app');
@@ -2495,6 +2653,7 @@ function render(){
   app.className = WIDE_VIEWS.includes(state.view) ? 'app-wide' : '';
   let body = renderTopbar();
   if(state.view==='dashboard') body += renderDashboard();
+  else if(state.view==='batchFeeding') body += renderBatchFeeding();
   else if(state.view==='foodInventory') body += renderFoodInventory();
   else if(state.view==='medicineInventory') body += renderMedicineInventory();
   else if(state.view==='handlersInventory') body += renderHandlersInventory();
@@ -2528,6 +2687,14 @@ function attachDynamicHandlers(){
       if(countEl) countEl.textContent = (shown.length === state.dogs.length) ? `(${state.dogs.length})` : `(${shown.length} of ${state.dogs.length})`;
     });
   }
+  const bfDate = document.getElementById('batch-feed-date');
+  if(bfDate) bfDate.addEventListener('change', e=>{
+    state.batchFeedDate = e.target.value || todayISO();
+    seedBatchSelection(); // re-tick based on who's already fed on the new date
+    render();
+  });
+  const bfHandler = document.getElementById('batch-feed-handler');
+  if(bfHandler) bfHandler.addEventListener('change', e=>{ state.batchFeedHandler = e.target.value; });
   const rosterFilterFields = [
     ['roster-filter-breed','rosterFilterBreed'],
     ['roster-filter-sex','rosterFilterSex'],
@@ -2807,6 +2974,56 @@ function quickLogRations(dogId, handlerId){
   if(skipped.length){
     alert((logged.length ? 'Logged: ' + logged.join(', ') + '.\n\n' : 'Nothing was logged.\n\n') + 'Skipped due to insufficient stock: ' + skipped.join('; ') + '.');
   }
+}
+function submitBatchFeeding(){
+  if(!canAdd()){ alert('Your current role cannot log feeding.'); return; }
+  const date = state.batchFeedDate || todayISO();
+  const handlerId = state.batchFeedHandler || '';
+  const ids = batchSelectedIds();
+  if(ids.length===0){ alert('Select at least one dog to feed.'); return; }
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first — a handler must be selected to log feeding.'); }
+    else{ alert('Please select the handler doing the feeding.'); }
+    return;
+  }
+  // a food can't be consumed before the day it was first stocked
+  const totals = batchRequirements();
+  const tooEarly = Object.keys(totals).filter(name=>{
+    const earliest = foodBatchesByName(name)[0];
+    return earliest && earliest.purchaseDate && date < earliest.purchaseDate;
+  });
+  if(tooEarly.length){
+    alert('This date (' + fmtDate(date) + ') is before ' + tooEarly.join(', ') + ' was first stocked. Please check the date.');
+    return;
+  }
+  // all-or-nothing: a half-finished batch is worse than none
+  const short = batchShortfalls(date);
+  if(short.length){
+    alert('Not enough stock to feed everyone selected:\n\n' + short.map(s=>'• ' + s.name + ': needs ' + qtyLabel(s.needed, s.unit) + ', only ' + qtyLabel(s.available, s.unit) + ' available').join('\n') + '\n\nRestock, or unselect some dogs, then try again.');
+    return;
+  }
+  const alreadyFed = ids.filter(id=>dogFedOn(id, date));
+  if(alreadyFed.length){
+    const names = alreadyFed.map(id=>{ const d = state.dogs.find(x=>x.id===id); return d?d.name:'?'; });
+    if(!confirm(names.join(', ') + (names.length===1?' has':' have') + ' already been fed on ' + fmtDate(date) + '.\n\nLog another feeding for ' + (names.length===1?'it':'them') + ' anyway?')) return;
+  }
+  let dogsLogged = 0, entriesLogged = 0;
+  ids.forEach(id=>{
+    const dog = state.dogs.find(d=>d.id===id);
+    if(!dog || isPostedOut(dog)) return; // posted-out dogs never get fed via batch
+    const rations = dogRations(dog);
+    if(!rations.length) return;
+    rations.forEach(r=>{
+      state.feedingLogs.push({ id:uid(), dogId:id, date, foodName:r.foodName, amount:r.amount, handlerId, notes:'Daily feeding (batch)' });
+      deductFoodStock(r.foodName, r.amount, date);
+      entriesLogged++;
+    });
+    dogsLogged++;
+  });
+  saveFeedingLogs(); saveFoodItems();
+  seedBatchSelection();
+  render();
+  alert('Logged ' + entriesLogged + ' feeding entr' + (entriesLogged===1?'y':'ies') + ' across ' + dogsLogged + ' dog' + (dogsLogged===1?'':'s') + ' for ' + fmtDate(date) + '.');
 }
 function deleteFeedingEntry(id){
   const entry = state.feedingLogs.find(f=>f.id===id);
@@ -3206,6 +3423,24 @@ document.addEventListener('click', (e)=>{
     state.rosterFilterBreed=''; state.rosterFilterSex=''; state.rosterFilterRole=''; state.rosterFilterAge='';
     render();
   }
+  else if(action==='go-batch-feeding'){
+    state.view='batchFeeding';
+    if(!state.batchFeedDate) initBatchFeeding();
+    render();
+  }
+  else if(action==='toggle-batch-dog'){
+    state.batchFeedSelected = Object.assign({}, state.batchFeedSelected);
+    state.batchFeedSelected[id] = !state.batchFeedSelected[id];
+    render();
+  }
+  else if(action==='batch-select-all'){
+    const sel = {};
+    batchFeedDogs().forEach(d=>{ if(dogRations(d).length) sel[d.id] = true; });
+    state.batchFeedSelected = sel;
+    render();
+  }
+  else if(action==='batch-select-none'){ state.batchFeedSelected = {}; render(); }
+  else if(action==='batch-feed-submit'){ submitBatchFeeding(); }
   else if(action==='go-add-dog'){ state.view='dogForm'; state.editingDogId=null; state.dogFormPhoto=null; render(); }
   else if(action==='go-add-food'){ state.view='foodForm'; state.editingFoodId=null; render(); }
   else if(action==='view-dog'){ state.view='dogDetail'; state.selectedDogId=id; state.detailTab='profile'; state.showHealthForm=false; state.showTrainingForm=false; state.showFeedingForm=false; render(); }

@@ -227,6 +227,8 @@
   }
   .batch-row.checked{ border-color:var(--brass); background:#FFFDF8; }
   .batch-row .dc-main{ flex:1; min-width:0; }
+  label.batch-row input[type=checkbox]{ width:20px; height:20px; accent-color:var(--brass); flex-shrink:0; cursor:pointer; }
+  label.batch-row:has(input:checked){ border-color:var(--brass); background:#FFFDF8; }
   .batch-row .sub{ font-size:12px; color:var(--ink-soft); margin-top:1px; }
   .batch-check{
     width:20px; height:20px; border-radius:5px; flex-shrink:0;
@@ -531,6 +533,7 @@ const state = {
   showFeedingForm:false,
   showQuickRationForm:false,
   search:'',
+  batchActivityType:'training',
   batchFeedDate:'',
   batchFeedHandler:'',
   batchFeedSelected:{},
@@ -1365,7 +1368,7 @@ function backBar(action, label){
   </div>`;
 }
 function renderTopbar(){
-  const topLevel = ['dashboard','batchFeeding','foodInventory','medicineInventory','handlersInventory','reports'];
+  const topLevel = ['dashboard','batchFeeding','batchActivity','foodInventory','medicineInventory','handlersInventory','reports'];
   if(topLevel.includes(state.view)){
     return `
     <div class="topbar">
@@ -1446,6 +1449,7 @@ function renderSidebar(){
   const items = [
     {view:'dashboard', action:'go-dashboard', label:'Roster', icon:ICONS.paw},
     ...(canAdd() ? [{view:'batchFeeding', action:'go-batch-feeding', label:'Daily Feeding', icon:ICONS.bowl}] : []),
+    ...(canAdd() ? [{view:'batchActivity', action:'go-batch-activity', label:'Batch Activities', icon:ICONS.clipboard}] : []),
     {view:'foodInventory', action:'go-food', label:'Food Stock', icon:ICONS.bowl},
     {view:'medicineInventory', action:'go-medicine', label:'Medicine', icon:ICONS.pill},
     {view:'handlersInventory', action:'go-handlers', label:'Handlers', icon:ICONS.person},
@@ -1454,6 +1458,7 @@ function renderSidebar(){
   const groupOf = {
     dashboard:'dashboard', dogDetail:'dashboard', dogForm:'dashboard',
     batchFeeding:'batchFeeding',
+    batchActivity:'batchActivity',
     foodInventory:'foodInventory', foodForm:'foodInventory',
     medicineInventory:'medicineInventory', medicineForm:'medicineInventory',
     handlersInventory:'handlersInventory', handlerForm:'handlersInventory',
@@ -1625,7 +1630,9 @@ function renderFoodForm(){
           <select name="unit">${FOOD_UNITS.map(u=>`<option value="${u}" ${f.unit===u?'selected':''}>${u}</option>`).join('')}</select>
         </div>
       </div>
-      ${editing ? '' : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(f.purchaseQty)}" placeholder="e.g. 20" /></div>`}
+      ${editing
+        ? `<div class="fld"><label>Current stock <span class="req">*</span></label><input type="number" step="0.01" min="0" name="currentQty" required value="${esc(f.remainingQty)}" /><div class="fld-hint">This batch's remaining quantity right now — correct it here (e.g. after a recount). To add more stock, use Restock instead.</div></div>`
+        : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(f.purchaseQty)}" placeholder="e.g. 20" /></div>`}
       <div class="fld-row">
         <div class="fld"><label>Purchase date</label><input type="date" name="purchaseDate" value="${esc(f.purchaseDate)}" /></div>
         <div class="fld"><label>Expiry date</label><input type="date" name="expiryDate" value="${esc(f.expiryDate)}" /></div>
@@ -1737,7 +1744,9 @@ function renderMedicineForm(){
           <select name="unit">${MEDICINE_UNITS.map(u=>`<option value="${u}" ${m.unit===u?'selected':''}>${u}</option>`).join('')}</select>
         </div>
       </div>
-      ${editing ? '' : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(m.purchaseQty)}" placeholder="e.g. 100" /></div>`}
+      ${editing
+        ? `<div class="fld"><label>Current stock <span class="req">*</span></label><input type="number" step="0.01" min="0" name="currentQty" required value="${esc(m.remainingQty)}" /><div class="fld-hint">This batch's remaining quantity right now — correct it here (e.g. after a recount). To add more stock, use Restock instead.</div></div>`
+        : `<div class="fld"><label>Quantity purchased <span class="req">*</span></label><input type="number" step="0.01" min="0.01" name="purchaseQty" required value="${esc(m.purchaseQty)}" placeholder="e.g. 100" /></div>`}
       <div class="fld-row">
         <div class="fld"><label>Purchase date</label><input type="date" name="purchaseDate" value="${esc(m.purchaseDate)}" /></div>
         <div class="fld"><label>Expiry date</label><input type="date" name="expiryDate" value="${esc(m.expiryDate)}" /></div>
@@ -1817,6 +1826,88 @@ function renderFeedingTabContent(dog){
     ${state.showQuickRationForm && !blocked ? renderQuickRationForm(dog) : ''}
     ${state.showFeedingForm && !blocked ? renderFeedingForm(dog) : ''}
     ${list}
+  `;
+}
+const BATCH_TRAINING_PROGRAMS = ['Basic Obedience','Sniffing / Arms & Explosive Detection Training'];
+function batchActivityTypeLabel(t){ return t==='health' ? 'Health' : t==='medicine' ? 'Medicine' : 'Training'; }
+function renderBatchTrainingFields(){
+  return `
+    <div class="fld"><label>Program <span class="req">*</span></label>
+      <input name="program" list="batch-program-suggestions" placeholder="e.g. Basic Obedience" />
+      <datalist id="batch-program-suggestions">${BATCH_TRAINING_PROGRAMS.map(p=>`<option value="${esc(p)}">`).join('')}</datalist>
+    </div>
+    <div class="fld"><label>Level <span class="req">*</span></label>
+      <select name="level">${TRAINING_LEVELS.map(l=>`<option value="${l}">${l}</option>`).join('')}</select>
+    </div>`;
+}
+function batchMedicineOptions(){
+  return uniqueMedicineNames().map(n=>`<option value="${esc(n)}">${esc(n)} (${qtyLabel(medicineTotalStock(n),medicineUnitFor(n))} total)</option>`).join('');
+}
+function renderBatchHealthFields(){
+  const hasMeds = uniqueMedicineNames().length>0;
+  return `
+    <div class="fld"><label>Type <span class="req">*</span></label>
+      <select name="type">${HEALTH_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+    </div>
+    <div class="fld"><label>Notes</label><textarea name="notes" placeholder="Details, vet name, etc. (applied to every selected dog)"></textarea></div>
+    <div class="fld-row">
+      <div class="fld"><label>Medicine used (optional)</label>
+        <select name="medicineName"><option value="">— None —</option>${batchMedicineOptions()}</select>
+      </div>
+      <div class="fld"><label>Amount per dog</label><input type="number" step="0.01" min="0" name="medicineAmount" placeholder="e.g. 2" /></div>
+    </div>
+    <div class="fld-hint" style="margin:-4px 0 12px;">${hasMeds ? 'If a medicine is chosen, the amount is deducted for each selected dog and also appears on each dog\u2019s Medicine tab.' : 'No medicine in stock yet \u2014 add some in the Medicine tab to attach it here.'}</div>
+    <div class="fld"><label>Next due date (optional)</label><input type="date" name="nextDueDate" /></div>`;
+}
+function renderBatchMedicineFields(){
+  const hasMeds = uniqueMedicineNames().length>0;
+  return `
+    <div class="fld-row">
+      <div class="fld"><label>Medicine <span class="req">*</span></label>
+        <select name="medicineName"><option value="">— Select medicine —</option>${batchMedicineOptions()}</select>
+      </div>
+      <div class="fld"><label>Amount per dog <span class="req">*</span></label><input type="number" step="0.01" min="0" name="amount" placeholder="e.g. 2" /></div>
+    </div>
+    ${hasMeds ? '' : '<div class="fld-hint" style="margin:-4px 0 12px;">No medicine in stock yet \u2014 add some in the Medicine tab first.</div>'}
+    <div class="fld"><label>Reason</label><input name="reason" placeholder="Optional" /></div>`;
+}
+function renderBatchActivity(){
+  const type = state.batchActivityType || 'training';
+  const dogs = batchFeedDogs();
+  const postedOutCount = state.dogs.length - dogs.length;
+  const typeFields = type==='health' ? renderBatchHealthFields() : type==='medicine' ? renderBatchMedicineFields() : renderBatchTrainingFields();
+  const tabs = ['training','health','medicine'].map(t=>`<button type="button" class="hometab-btn ${type===t?'active':''}" data-action="set-batch-activity-type" data-type="${t}" style="flex:1;">${batchActivityTypeLabel(t)}</button>`).join('');
+  const rows = dogs.map(d=>`
+    <label class="batch-row">
+      <input type="checkbox" name="dogIds" value="${d.id}" />
+      <div class="avatar" style="width:32px;height:32px;font-size:13px;">${d.photoDataUrl ? `<img src="${d.photoDataUrl}" alt="" />` : esc((d.name||'?').charAt(0).toUpperCase())}</div>
+      <div class="dc-main">
+        <div class="name" style="font-size:14.5px;">${esc(d.name)}${sexSymbolHtml(d.sex)}</div>
+        <div class="sub">${esc(d.breed||'Breed unknown')} · ${esc(roleLabel(d.role))}</div>
+      </div>
+    </label>`).join('');
+  return `
+    <h1 style="font-size:20px; color:var(--spruce-dark); margin-bottom:4px;">Batch Activities</h1>
+    <p class="fld-hint" style="margin-bottom:12px;">Log the same activity for several dogs at once.${postedOutCount?` ${postedOutCount} posted-out dog${postedOutCount===1?' is':'s are'} excluded.`:''}</p>
+    <div class="home-tabs" style="margin-bottom:12px;">${tabs}</div>
+    <form novalidate id="batch-activity-form" class="form-card">
+      <div class="fld-row">
+        <div class="fld"><label>Date <span class="req">*</span></label><input type="date" name="date" value="${todayISO()}" /></div>
+        <div class="fld"><label>${type==='medicine'?'Given by':type==='training'?'Conducted by':'Conducted by'} (Handler) <span class="req">*</span></label>
+          <select name="handlerId">${handlerOptions(null)}</select>
+        </div>
+      </div>
+      ${typeFields}
+      <div class="roster-header" style="margin-top:6px;">
+        <h2 style="font-size:15px;">Dogs <span class="count">(${dogs.length})</span></h2>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn ghost" data-action="batch-activity-select-all" style="padding:7px 12px; font-size:12.5px;">All</button>
+          <button type="button" class="btn ghost" data-action="batch-activity-select-none" style="padding:7px 12px; font-size:12.5px;">None</button>
+        </div>
+      </div>
+      ${dogs.length ? `<div class="batch-list">${rows}</div>` : '<div class="empty-state">No eligible dogs.</div>'}
+      <button type="submit" class="btn full" style="margin-top:14px;">Log ${batchActivityTypeLabel(type).toLowerCase()} for selected dogs</button>
+    </form>
   `;
 }
 function renderBatchFeeding(){
@@ -2616,7 +2707,7 @@ function renderTrainingForm(){
 }
 
 /* ---------------- Main render ---------------- */
-const WIDE_VIEWS = ['dashboard','batchFeeding','foodInventory','medicineInventory','handlersInventory','reports'];
+const WIDE_VIEWS = ['dashboard','batchFeeding','batchActivity','foodInventory','medicineInventory','handlersInventory','reports'];
 function render(){
   if(typeof document.title !== 'undefined'){ try{ document.title = (appHeadingText() ? appHeadingText() + ' · ' : '') + 'Kennel Board — Health & Training Tracker'; }catch(e){} }
   const app = document.getElementById('app');
@@ -2654,6 +2745,7 @@ function render(){
   let body = renderTopbar();
   if(state.view==='dashboard') body += renderDashboard();
   else if(state.view==='batchFeeding') body += renderBatchFeeding();
+  else if(state.view==='batchActivity') body += renderBatchActivity();
   else if(state.view==='foodInventory') body += renderFoodInventory();
   else if(state.view==='medicineInventory') body += renderMedicineInventory();
   else if(state.view==='handlersInventory') body += renderHandlersInventory();
@@ -2975,6 +3067,97 @@ function quickLogRations(dogId, handlerId){
     alert((logged.length ? 'Logged: ' + logged.join(', ') + '.\n\n' : 'Nothing was logged.\n\n') + 'Skipped due to insufficient stock: ' + skipped.join('; ') + '.');
   }
 }
+function dogNameById(id){ const d = state.dogs.find(x=>x.id===id); return d ? d.name : 'a dog'; }
+function batchDupPrompt(ids, what, date){
+  const names = ids.map(dogNameById);
+  return confirm(names.join(', ') + (names.length===1?' already has':' already have') + ' ' + what + ' on ' + fmtDate(date) + '.\n\nLog again anyway?');
+}
+function handleBatchActivitySubmit(form){
+  if(!canAdd()){ alert('Your current role cannot log activities.'); return; }
+  const fd = new FormData(form);
+  const type = state.batchActivityType || 'training';
+  const date = fd.get('date') || todayISO();
+  const handlerId = fd.get('handlerId') || '';
+  // only dogs that are still eligible (never posted-out), de-duplicated
+  const eligible = new Set(batchFeedDogs().map(d=>d.id));
+  const dogIds = Array.from(new Set(fd.getAll('dogIds'))).filter(id=>eligible.has(id));
+  if(dogIds.length===0){ alert('Select at least one dog.'); return; }
+  if(!handlerId){
+    if(state.handlers.length===0){ alert('Add a handler in the Handlers tab first \u2014 a handler must be selected to log this activity.'); }
+    else{ alert('Please select the handler for this activity.'); }
+    return;
+  }
+  const n = dogIds.length;
+  const plural = n + ' dog' + (n===1?'':'s');
+
+  if(type==='training'){
+    const program = (fd.get('program')||'').trim();
+    const level = fd.get('level') || TRAINING_LEVELS[0];
+    if(!program){ alert('Enter the training program.'); return; }
+    const dup = dogIds.filter(id=>state.trainingLogs.some(t=>t.dogId===id && t.date===date && t.program===program));
+    if(dup.length && !batchDupPrompt(dup, 'a \u201c'+program+'\u201d session', date)) return;
+    dogIds.forEach(id=>{
+      state.trainingLogs.push({ id:uid(), dogId:id, date, program, level, handlerId, notes:'Logged in batch' });
+    });
+    saveTrainingLogs();
+  }
+  else if(type==='health'){
+    const healthType = fd.get('type') || HEALTH_TYPES[0];
+    const notes = (fd.get('notes')||'').trim();
+    const nextDueDate = fd.get('nextDueDate') || null;
+    const medicineName = fd.get('medicineName') || '';
+    const medicineAmount = parseFloat(fd.get('medicineAmount')) || 0;
+    if(medicineName){
+      if(medicineAmount<=0){ alert('Enter how much ' + medicineName + ' was used per dog, or set Medicine used back to \u201cNone\u201d.'); return; }
+      const earliest = medicineBatchesByName(medicineName)[0];
+      if(earliest && earliest.purchaseDate && date < earliest.purchaseDate){
+        alert('This date (' + fmtDate(date) + ') is before ' + medicineName + ' was first stocked (' + fmtDate(earliest.purchaseDate) + '). Please check the date.'); return;
+      }
+      const needed = round2(medicineAmount * n);
+      const available = medicineTotalStock(medicineName, date);
+      if(needed > available){
+        alert('Not enough ' + medicineName + ': ' + plural + ' need ' + qtyLabel(needed, medicineUnitFor(medicineName)) + ', but only ' + qtyLabel(available, medicineUnitFor(medicineName)) + ' was in stock as of ' + fmtDate(date) + '. Nothing was logged.'); return;
+      }
+    }
+    const dup = dogIds.filter(id=>state.healthLogs.some(h=>h.dogId===id && h.date===date && h.type===healthType));
+    if(dup.length && !batchDupPrompt(dup, 'a \u201c'+healthType+'\u201d entry', date)) return;
+    dogIds.forEach(id=>{
+      const entryId = uid();
+      state.healthLogs.push({ id:entryId, dogId:id, date, type:healthType, notes, handlerId, medicineName: medicineName||null, medicineAmount: medicineName?medicineAmount:null, nextDueDate });
+      if(medicineName){
+        state.medicationLogs.push({ id:uid(), dogId:id, date, medicineName, amount:medicineAmount, handlerId, reason:healthType, notes:'Logged with health activity (batch)', linkedHealthId:entryId });
+        deductMedicineStock(medicineName, medicineAmount, date);
+      }
+    });
+    saveHealthLogs();
+    if(medicineName){ saveMedicineItems(); saveMedicationLogs(); }
+  }
+  else{
+    const medicineName = fd.get('medicineName') || '';
+    const amount = parseFloat(fd.get('amount')) || 0;
+    const reason = (fd.get('reason')||'').trim();
+    if(!medicineName){ alert('Select a medicine.'); return; }
+    if(amount<=0){ alert('Enter an amount greater than zero.'); return; }
+    const earliest = medicineBatchesByName(medicineName)[0];
+    if(earliest && earliest.purchaseDate && date < earliest.purchaseDate){
+      alert('This date (' + fmtDate(date) + ') is before ' + medicineName + ' was first stocked (' + fmtDate(earliest.purchaseDate) + '). Please check the date.'); return;
+    }
+    const needed = round2(amount * n);
+    const available = medicineTotalStock(medicineName, date);
+    if(needed > available){
+      alert('Not enough ' + medicineName + ': ' + plural + ' need ' + qtyLabel(needed, medicineUnitFor(medicineName)) + ', but only ' + qtyLabel(available, medicineUnitFor(medicineName)) + ' was in stock as of ' + fmtDate(date) + '. Nothing was logged.'); return;
+    }
+    const dup = dogIds.filter(id=>state.medicationLogs.some(m=>m.dogId===id && m.date===date && m.medicineName===medicineName));
+    if(dup.length && !batchDupPrompt(dup, medicineName, date)) return;
+    dogIds.forEach(id=>{
+      state.medicationLogs.push({ id:uid(), dogId:id, date, medicineName, amount, handlerId, reason, notes:'Logged in batch' });
+      deductMedicineStock(medicineName, amount, date);
+    });
+    saveMedicationLogs(); saveMedicineItems();
+  }
+  render();
+  alert('Logged ' + batchActivityTypeLabel(type).toLowerCase() + ' for ' + plural + ' on ' + fmtDate(date) + '.');
+}
 function submitBatchFeeding(){
   if(!canAdd()){ alert('Your current role cannot log feeding.'); return; }
   const date = state.batchFeedDate || todayISO();
@@ -3195,6 +3378,11 @@ function handleFoodFormSubmit(form){
       item.reorderThreshold = thr ? parseFloat(thr) : null;
       item.storageLocation = (fd.get('storageLocation')||'').trim();
       item.notes = (fd.get('notes')||'').trim();
+      const newQty = fd.get('currentQty');
+      if(newQty !== null && newQty !== ''){
+        const parsed = parseFloat(newQty);
+        if(!isNaN(parsed) && parsed >= 0) item.remainingQty = parsed;
+      }
     }
   }else{
     const qty = parseFloat(fd.get('purchaseQty')) || 0;
@@ -3306,6 +3494,11 @@ function handleMedicineFormSubmit(form){
       item.reorderThreshold = thr ? parseFloat(thr) : null;
       item.storageLocation = (fd.get('storageLocation')||'').trim();
       item.notes = (fd.get('notes')||'').trim();
+      const newQty = fd.get('currentQty');
+      if(newQty !== null && newQty !== ''){
+        const parsed = parseFloat(newQty);
+        if(!isNaN(parsed) && parsed >= 0) item.remainingQty = parsed;
+      }
     }
   }else{
     const qty = parseFloat(fd.get('purchaseQty')) || 0;
@@ -3412,7 +3605,7 @@ document.addEventListener('click', (e)=>{
   }
   const action = el.dataset.action;
   const id = el.dataset.id;
-  const NAV_ACTIONS = ['go-dashboard','go-food','go-medicine','go-handlers','go-reports','open-settings','go-contact','switch-role'];
+  const NAV_ACTIONS = ['go-batch-feeding','go-batch-activity','go-dashboard','go-food','go-medicine','go-handlers','go-reports','open-settings','go-contact','switch-role'];
   if(NAV_ACTIONS.includes(action)) state.sidebarOpen = false;
   try{
   if(action==='toggle-sidebar'){ state.sidebarOpen = !state.sidebarOpen; render(); }
@@ -3422,6 +3615,12 @@ document.addEventListener('click', (e)=>{
   else if(action==='clear-roster-filters'){
     state.rosterFilterBreed=''; state.rosterFilterSex=''; state.rosterFilterRole=''; state.rosterFilterAge='';
     render();
+  }
+  else if(action==='go-batch-activity'){ state.view='batchActivity'; render(); }
+  else if(action==='set-batch-activity-type'){ state.batchActivityType = el.dataset.type || 'training'; render(); }
+  else if(action==='batch-activity-select-all' || action==='batch-activity-select-none'){
+    const on = action==='batch-activity-select-all';
+    document.querySelectorAll('#batch-activity-form input[name="dogIds"]').forEach(c=>{ c.checked = on; });
   }
   else if(action==='go-batch-feeding'){
     state.view='batchFeeding';
@@ -3580,7 +3779,8 @@ document.addEventListener('submit', (e)=>{
       });
       return;
     }
-    if(formId==='dog-form') handleDogFormSubmit(e.target);
+    if(formId==='batch-activity-form') handleBatchActivitySubmit(e.target);
+    else if(formId==='dog-form') handleDogFormSubmit(e.target);
     else if(formId==='health-form') handleHealthFormSubmit(e.target);
     else if(formId==='training-form') handleTrainingFormSubmit(e.target);
     else if(formId==='food-form') handleFoodFormSubmit(e.target);
